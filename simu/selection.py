@@ -243,7 +243,9 @@ def lowest_latency(
     t0 = time.perf_counter()
 
     best = None
-    for sid in list(CANDIDATE_STITCHES.keys())[-3:]:
+    ids = [1,2,3, 4, 5, 6, 7]
+    index = random.choice(ids)
+    for sid in list(CANDIDATE_STITCHES.keys())[-index:]:
         mets = e2e_metrics_for_stitch(
             sid, placement, topo, rng, task_profile_name,
             greedy_objective="latency"
@@ -266,8 +268,10 @@ def random_pick_stitch(
 ) -> Dict:
     """Pick a random stitch uniformly (topology-aware)."""
     t0 = time.perf_counter()
-
-    sid = rng.choice(list(CANDIDATE_STITCHES.keys()))
+    ids = [1, 2, 3, 4, 5, 6, 7]
+    index = random.choice(ids)
+    candidate_stitches=list(CANDIDATE_STITCHES.keys())[-index:]
+    sid = rng.choice(candidate_stitches)
     mets = e2e_metrics_for_stitch(
         sid, placement, topo, rng, task_profile_name,
         greedy_objective="random2",  # sample 2 dst nodes per hop, pick better
@@ -288,8 +292,10 @@ def round_robin_pick_stitch(
 ) -> Dict:
     """Cycle through stitches in a fixed order, offset by (index + offset) (topology-aware)."""
     t0 = time.perf_counter()
-
-    RR_STITCH_ORDER = sorted(CANDIDATE_STITCHES.keys())
+    ids = [1, 2, 3, 4, 5, 6, 7]
+    index_id = random.choice(ids)
+    candidate_stitches = list(CANDIDATE_STITCHES.keys())[-index_id:]
+    RR_STITCH_ORDER = sorted(candidate_stitches)
     sid = RR_STITCH_ORDER[(index + offset) % len(RR_STITCH_ORDER)]
     mets = e2e_metrics_for_stitch(
         sid, placement, topo, rng, task_profile_name,

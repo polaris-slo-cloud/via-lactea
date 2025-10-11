@@ -1,0 +1,6 @@
+run,strategy,latency_ms,acc,payload_mb,link_mb,hop_count,met_slo,stages_met,met_task_slo_all,stages_met_task_slo,stages,profiles
+0,SLO-first,1095.0,90.47,3.97607421875,5.1962890625,29,False,0,False,0,3,extract-frames|object-det|prepare-ds
+0,Best-Acc,26747.088647887816,90.47,4.74169921875,135.4833984375,625,False,0,False,0,3,extract-frames|object-det|prepare-ds
+0,Lowest-Latency,1839.9407716189326,82.24,3.73681640625,6.95166015625,45,False,0,False,0,3,extract-frames|object-det|prepare-ds
+0,Random,17939.101195528456,88.07,3.35400390625,84.10546875,423,False,0,False,0,3,extract-frames|object-det|prepare-ds
+0,Round-Robin,22391.354916720236,86.76,4.21533203125,88.88623046875,532,False,0,False,0,3,extract-frames|object-det|prepare-ds

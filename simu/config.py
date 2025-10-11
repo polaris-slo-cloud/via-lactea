@@ -9,8 +9,8 @@ import os
 SEED               = 42
 
 # Simulation sizes
-NUM_RUNS_TASK      = 5
-NUM_RUNS_WORKFLOW  = 5
+NUM_RUNS_TASK      = 1
+NUM_RUNS_WORKFLOW  = 1
 WORKFLOW_STAGES    = 3
 
 # SLO knobs
