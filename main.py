@@ -9,11 +9,10 @@ import pandas as pd
 
 from simu import config
 from simu.topology import build_topology
-from simu.simulate import simulate_task, simulate_workflow, pareto_front
+from simu.simulator import simulate_task, simulate_workflow
 from simu.stats_io import (
     agg_stats, agg_stats_by_profile, accuracy_stats, accuracy_stats_by_profile,
-    slo_violation_rates_task, slo_violation_rates_task_by_profile,
-    slo_violation_rates_workflow_task_slo, save_csv
+    slo_violation_rates_task, slo_violation_rates_task_by_profile, save_csv
 )
 
 
@@ -66,9 +65,6 @@ def main():
     if "selection_time_ms" in task_df_all.columns:
         print("Selector runtime (ms):")
         print(agg_stats(task_df_all, "selection_time_ms").to_string(index=False))
-    if "ssp_calls" in task_df_all.columns:
-        print("SSSP calls (count):")
-        print(agg_stats(task_df_all, "ssp_calls").to_string(index=False))
 
     print("Accuracy (%):")
     print(accuracy_stats(task_df_all).to_string(index=False))
@@ -83,14 +79,30 @@ def main():
     if "selection_time_ms" in task_df_all.columns:
         print("Selector runtime (ms) by profile:")
         print(agg_stats_by_profile(task_df_all, "selection_time_ms").to_string(index=False))
-    if "ssp_calls" in task_df_all.columns:
-        print("SSSP calls by profile:")
-        print(agg_stats_by_profile(task_df_all, "ssp_calls").to_string(index=False))
+    #if "ssp_calls" in task_df_all.columns:
+    #    print("SSSP calls by profile:")
+    #    print(agg_stats_by_profile(task_df_all, "ssp_calls").to_string(index=False))
 
     print("Accuracy (%) by profile:")
     print(accuracy_stats_by_profile(task_df_all).to_string(index=False))
     print("SLO violation rate by profile (% of task requests):")
     print(slo_violation_rates_task_by_profile(task_df_all).to_string(index=False))
+
+    # New: E2E SLO excess stats (ms and %), aggregated across profiles
+    if {"slo_excess_ms", "slo_excess_pct"}.issubset(task_df_all.columns):
+        def _agg_excess(df, col):
+            g = df.groupby("strategy")[col]
+            return (g.mean().rename("mean_" + col)
+                    .to_frame()
+                    .join(g.median().rename("p50_" + col))
+                    .join(g.quantile(0.95).rename("p95_" + col)))
+
+        print("TASK SLO excess (ms) across strategies:")
+        print(_agg_excess(task_df_all, "slo_excess_ms").to_string())
+        print("TASK SLO excess (%) across strategies:")
+        print(_agg_excess(task_df_all, "slo_excess_pct").to_string())
+        save_csv(_agg_excess(task_df_all, "slo_excess_ms"), outdir, "task_slo_excess_ms_by_strategy.csv")
+        save_csv(_agg_excess(task_df_all, "slo_excess_pct"), outdir, "task_slo_excess_pct_by_strategy.csv")
 
     # Save task CSVs (existing)
     save_csv(task_df_all, outdir, "task_runs_all.csv")
@@ -148,18 +160,18 @@ def main():
     if "selection_time_ms" in wf_df.columns:
         print("Selector runtime (ms):")
         print(agg_stats(wf_df, "selection_time_ms").to_string(index=False))
-    if "ssp_calls" in wf_df.columns:
-        print("SSSP calls (count):")
-        print(agg_stats(wf_df, "ssp_calls").to_string(index=False))
+    #if "ssp_calls" in wf_df.columns:
+    #    print("SSSP calls (count):")
+    #    print(agg_stats(wf_df, "ssp_calls").to_string(index=False))
 
-    print("Accuracy (%):")
-    print(accuracy_stats(wf_df).to_string(index=False))
+    #print("Accuracy (%):")
+    #print(accuracy_stats(wf_df).to_string(index=False))
 
-    runs_rate_task, stages_rate_task = slo_violation_rates_workflow_task_slo(wf_df)
-    print("Workflow SLO violation (per-run; any stage violates) — based on SLO_MS_TASK:")
-    print(runs_rate_task.to_string(index=False))
-    print("Workflow SLO violation (per-stage across all runs) — based on SLO_MS_TASK:")
-    print(stages_rate_task.to_string(index=False))
+    #runs_rate_task, stages_rate_task = slo_violation_rates_workflow_task_slo(wf_df)
+    #print("Workflow SLO violation (per-run; any stage violates) — based on SLO_MS_TASK:")
+    #print(runs_rate_task.to_string(index=False))
+    #print("Workflow SLO violation (per-stage across all runs) — based on SLO_MS_TASK:")
+    #print(stages_rate_task.to_string(index=False))
 
     # Save workflow CSVs (existing)
     save_csv(wf_df, outdir, "workflow_runs.csv")
@@ -195,8 +207,8 @@ def main():
         _wf_wide = _wf_wide.merge(f, on=keys_wf)
 
     save_csv(_wf_wide, outdir, "workflow_summary_ALL_by_strategy.csv")
-    save_csv(runs_rate_task, outdir, "workflow_slo_violation_task_slo_runs.csv")
-    save_csv(stages_rate_task, outdir, "workflow_slo_violation_task_slo_stages.csv")
+    #save_csv(runs_rate_task, outdir, "workflow_slo_violation_task_slo_runs.csv")
+    #save_csv(stages_rate_task, outdir, "workflow_slo_violation_task_slo_stages.csv")
 
     # Optional Pareto counts
     # for name, df in [("Task (all profiles)", task_df_all), ("Workflow", wf_df)]:

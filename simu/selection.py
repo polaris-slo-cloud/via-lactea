@@ -1,8 +1,11 @@
 """
 Stitch-selection policies (SLO-first, Best-Acc, Lowest-Latency, Random, Round-Robin).
 Adds selection_time_ms to report wall-clock policy runtime, plus ssp_calls for DP selector.
-"""
 
+Selector SLO policy:
+- Stage SLO = config.SLO_MS_STAGE (net-only, used to prune & report inside DP).
+- Per-edge propagation cap is controlled separately via per_edge_prop_cap_ms.
+"""
 import math
 import random
 import time
@@ -16,23 +19,28 @@ from .runtime import e2e_metrics_for_stitch, _nodes_for_module
 from .selection_algo import _pair_shortest_cached
 from .topology import Node, module_output_mb, Topology, _filtered_topology_view
 
+# ----------------------------------------------------------------------------- #
+# SLO helper (stage SLO only)                                                   #
+# ----------------------------------------------------------------------------- #
+
+def _stage_slo_fields(total_net_ms: float):
+    """
+    Stage/task SLO check (NET-ONLY) against config.SLO_MS_STAGE.
+    Returns (met_slo, excess_ms, excess_pct, slo_ms_used).
+    """
+    slo_ms = getattr(config, "SLO_MS_STAGE", None)
+    if slo_ms is None or not math.isfinite(slo_ms) or slo_ms <= 0:
+        return True, 0.0, float("nan"), slo_ms
+    excess = max(0.0, float(total_net_ms) - float(slo_ms))
+    met = (excess <= 1e-9)
+    pct = 100.0 * excess / float(slo_ms) if slo_ms > 0 else float("nan")
+    return met, excess, pct, slo_ms
 
 # ----------------------------------------------------------------------------- #
 # Helpers                                                                       #
 # ----------------------------------------------------------------------------- #
 
-def _allowed_pairs_for_edge(
-    placement: Dict,
-    m_src: str,
-    m_dst: str,
-) -> List[Tuple[Node, Node]]:
-    """
-    Resolve allowed (src_node, dst_node) pairs for the edge m_src -> m_dst.
-
-    Supports:
-      - Explicit per-edge list: placement[(m_src, m_dst)] = [(srcNode, dstNode), ...]
-      - Fallback to Cartesian product of module node lists.
-    """
+def _allowed_pairs_for_edge(placement: Dict, m_src: str, m_dst: str) -> List[Tuple[Node, Node]]:
     key = (m_src, m_dst)
     if key in placement:
         pairs = placement[key]
@@ -41,36 +49,41 @@ def _allowed_pairs_for_edge(
             if isinstance(p, tuple) and len(p) == 2 and p[0] is not None and p[1] is not None:
                 out.append((p[0], p[1]))
         return out
-
     src_nodes = _nodes_for_module(placement, m_src)
     dst_nodes = _nodes_for_module(placement, m_dst)
     return [(s, d) for s in src_nodes for d in dst_nodes]
-
 
 # ----------------------------------------------------------------------------- #
 # Core DP-based, topology-aware stitch chooser                                  #
 # ----------------------------------------------------------------------------- #
 
 def choose_stitch_for_task(
-    placement: Dict,                  # supports per-edge pairs and/or per-module lists
+    placement: Dict,
     topo: Topology,
     rng: random.Random,
     task_profile_name: str,
     *,
-    slo_ms: Optional[float] = None,
+    slo_ms: Optional[float] = None,          # IGNORED; we always use config.SLO_MS_STAGE
     acc_min: Optional[float] = None,
     per_edge_prop_cap_ms: Optional[float] = None,
 ) -> Optional[Dict]:
     """
-    Returns a metrics dict for the chosen stitch, now including:
-      - selection_time_ms: wall-clock time to execute this selection algorithm
-      - ssp_calls: number of shortest-path calls performed (scales with graph/placement)
+    Returns a metrics dict for the chosen stitch, including:
+      - selection_time_ms (selector runtime)
+      - ssp_calls (SSSP invocation count)
+
+    IMPORTANT:
+      - Stage SLO = config.SLO_MS_STAGE is used (net-only). Any passed slo_ms is ignored.
+      - Per-edge propagation caps are applied via per_edge_prop_cap_ms and the filtered topology.
     """
+    # lock to stage SLO from config
+    stage_slo_ms = getattr(config, "SLO_MS_STAGE", None)
+
     t0 = time.perf_counter()
     ssp_calls = 0
 
     ftopo = _filtered_topology_view(topo, per_edge_prop_cap_ms)
-    feasible = []
+    feasible: List[Tuple[Tuple[float, float], Dict]] = []
 
     candidate_stitches = list(CANDIDATE_STITCHES.items())
     random.shuffle(candidate_stitches)
@@ -82,34 +95,35 @@ def choose_stitch_for_task(
 
         mods: List[str] = spec["modules"]
         if len(mods) < 2:
-            # trivial stitch (single module): zero net, zero hops
+            met_slo, exc_ms, exc_pct, slo_used = _stage_slo_fields(0.0)
             mets = {
                 "stitch_id": sid,
                 "acc": acc,
-                "latency_ms": 0.0,
+                "latency_ms": 0.0,           # selection-time = net-only
                 "net_base_ms": 0.0,
                 "hop_count": 0,
                 "payload_mb": 0.0,
                 "link_mb": 0.0,
                 "compute_ms": 0.0,
                 "net_latency_ms": 0.0,
-                "met_slo": True,
-                "met_dual_slo": True,
+                "met_slo": met_slo,
+                "slo_ms": slo_used,
+                "slo_excess_ms": exc_ms,
+                "slo_excess_pct": exc_pct,
+                "met_dual_slo": met_slo and (acc_min is None or acc >= acc_min),
                 "selection_time_ms": (time.perf_counter() - t0) * 1000.0,
                 "ssp_calls": ssp_calls,
             }
             feasible.append(((0.0, -acc), mets))
             continue
 
-        # DP maps node_id for mods[i] -> (cum_net_ms, cum_hops, cum_payload_mb, cum_link_mb, parent_node_id)
+        # DP: nid -> (cum_net_ms, cum_hops, cum_payload_mb, cum_link_mb, parent_nid)
         dp_prev: Dict[str, Tuple[float, int, float, float, Optional[str]]] = {}
 
-        # Initialize: candidate nodes for the first module (or infer from first edge)
         first_nodes = _nodes_for_module(placement, mods[0])
         if not first_nodes:
             pairs01 = _allowed_pairs_for_edge(placement, mods[0], mods[1])
             first_nodes = sorted({p[0] for p in pairs01}, key=lambda n: n.nid)
-
         if not first_nodes:
             continue
 
@@ -117,10 +131,8 @@ def choose_stitch_for_task(
             dp_prev[n.nid] = (0.0, 0, 0.0, 0.0, None)
 
         dijk_cache: Dict[str, Dict[str, Tuple[Optional[float], Optional[List[str]]]]] = {}
-
         ok = True
 
-        # Progress over each adjacent module edge
         for i in range(len(mods) - 1):
             m_src, m_dst = mods[i], mods[i + 1]
             payload_i = module_output_mb(m_src)
@@ -139,7 +151,7 @@ def choose_stitch_for_task(
 
                 prev_lat, prev_hops, prev_payload, prev_link, _ = prev
 
-                # SSSP call (counted)
+                # SSSP call (counted). Use stage_slo_ms for early-abort pruning INSIDE shortest path.
                 ssp_calls += 1
                 lat_ms, path_nodes = _pair_shortest_cached(
                     ftopo, src_node.nid, dst_node.nid, dijk_cache, slo_ms
@@ -171,19 +183,23 @@ def choose_stitch_for_task(
         end_nid, (base_net_ms, total_hops, payload_mb_total, link_mb_total, parent) = \
             min(dp_prev.items(), key=lambda kv: kv[1][0])
 
+        met_slo, exc_ms, exc_pct, slo_used = _stage_slo_fields(base_net_ms)
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
         mets = {
             "stitch_id": sid,
             "acc": acc,
-            "latency_ms": base_net_ms,
+            "latency_ms": base_net_ms,      # net-only at selection time
             "net_base_ms": base_net_ms,
             "hop_count": total_hops,
             "payload_mb": payload_mb_total,
             "link_mb": link_mb_total,
-            "compute_ms": 0.0,
+            "compute_ms": 0.0,              # unknown here
             "net_latency_ms": base_net_ms,
-            "met_slo": True,
-            "met_dual_slo": True,
+            "met_slo": met_slo,             # stage SLO
+            "slo_ms": slo_used,
+            "slo_excess_ms": exc_ms,
+            "slo_excess_pct": exc_pct,
+            "met_dual_slo": met_slo and (acc_min is None or acc >= acc_min),
             "selection_time_ms": elapsed_ms,
             "ssp_calls": ssp_calls,
         }
@@ -192,119 +208,60 @@ def choose_stitch_for_task(
     if not feasible:
         return None
 
-    # If acc_min is set, we already filtered by it. Just pick the best by our tuple key.
     feasible.sort(key=lambda t: t[0])
     return feasible[0][1]
-
 
 # ----------------------------------------------------------------------------- #
 # Simple policy wrappers (also timed)                                           #
 # ----------------------------------------------------------------------------- #
 
-def always_best_accuracy(
-    placement: Dict[str, Node],
-    topo: Topology,
-    rng: random.Random,
-    task_profile_name: str
-) -> Dict:
-    """Pick the highest-accuracy stitch; tie-break on lowest latency (topology-aware)."""
+def always_best_accuracy(placement: Dict[str, Node], topo: Topology, rng: random.Random, task_profile_name: str) -> Dict:
     t0 = time.perf_counter()
-
     top_acc = max(spec["acc"] for spec in CANDIDATE_STITCHES.values())
     best = None
     candidate_stitches = list(CANDIDATE_STITCHES.items())
     random.shuffle(candidate_stitches)
-
     for sid, spec in candidate_stitches:
         if spec["acc"] + 1e-9 < top_acc:
             continue
-        mets = e2e_metrics_for_stitch(
-            sid, placement, topo, rng, task_profile_name,
-            greedy_objective="accuracy_first_fit"
-        )
+        mets = e2e_metrics_for_stitch(sid, placement, topo, rng, task_profile_name, greedy_objective="accuracy_first_fit")
         cand = {"stitch_id": sid, **mets}
-        if (best is None) or (mets["latency_ms"] < best["latency_ms"]):
+        if (best is None) or (cand["latency_ms"] < best["latency_ms"]):
             best = cand
-
     if best is None:
         best = _reject_row()
-
     best["selection_time_ms"] = (time.perf_counter() - t0) * 1000.0
     return best
 
-
-def lowest_latency(
-    placement: Dict[str, Node],
-    topo: Topology,
-    rng: random.Random,
-    task_profile_name: str
-) -> Dict:
-    """Pick the stitch with minimum end-to-end latency (topology-aware)."""
+def lowest_latency(placement: Dict[str, Node], topo: Topology, rng: random.Random, task_profile_name: str) -> Dict:
     t0 = time.perf_counter()
-
     best = None
-    ids = [1,2,3, 4, 5, 6, 7]
-    index = random.choice(ids)
-    for sid in list(CANDIDATE_STITCHES.keys())[-index:]:
-        mets = e2e_metrics_for_stitch(
-            sid, placement, topo, rng, task_profile_name,
-            greedy_objective="latency"
-        )
-        if (best is None) or (mets["latency_ms"] < best["latency_ms"]):
-            best = {"stitch_id": sid, **mets}
-
+    for sid in CANDIDATE_STITCHES.keys():
+        mets = e2e_metrics_for_stitch(sid, placement, topo, rng, task_profile_name, greedy_objective="latency")
+        cand = {"stitch_id": sid, **mets}
+        if (best is None) or (cand["latency_ms"] < best["latency_ms"]):
+            best = cand
     if best is None:
         best = _reject_row()
-
     best["selection_time_ms"] = (time.perf_counter() - t0) * 1000.0
     return best
 
-
-def random_pick_stitch(
-    placement: Dict[str, Node],
-    topo: Topology,
-    rng: random.Random,
-    task_profile_name: str
-) -> Dict:
-    """Pick a random stitch uniformly (topology-aware)."""
+def random_pick_stitch(placement: Dict[str, Node], topo: Topology, rng: random.Random, task_profile_name: str) -> Dict:
     t0 = time.perf_counter()
-    ids = [1, 2, 3, 4, 5, 6, 7]
-    index = random.choice(ids)
-    candidate_stitches=list(CANDIDATE_STITCHES.keys())[-index:]
-    sid = rng.choice(candidate_stitches)
-    mets = e2e_metrics_for_stitch(
-        sid, placement, topo, rng, task_profile_name,
-        greedy_objective="random2",  # sample 2 dst nodes per hop, pick better
-        random_k=2
-    )
+    sid = rng.choice(list(CANDIDATE_STITCHES.keys()))
+    mets = e2e_metrics_for_stitch(sid, placement, topo, rng, task_profile_name, greedy_objective="random2", random_k=2)
     out = {"stitch_id": sid, **mets}
     out["selection_time_ms"] = (time.perf_counter() - t0) * 1000.0
     return out
 
-
-def round_robin_pick_stitch(
-    index: int,
-    placement: Dict[str, Node],
-    topo: Topology,
-    rng: random.Random,
-    task_profile_name: str,
-    offset: int = config.RR_START_OFFSET
-) -> Dict:
-    """Cycle through stitches in a fixed order, offset by (index + offset) (topology-aware)."""
+def round_robin_pick_stitch(index: int, placement: Dict[str, Node], topo: Topology, rng: random.Random, task_profile_name: str, offset: int = config.RR_START_OFFSET) -> Dict:
     t0 = time.perf_counter()
-    ids = [1, 2, 3, 4, 5, 6, 7]
-    index_id = random.choice(ids)
-    candidate_stitches = list(CANDIDATE_STITCHES.keys())[-index_id:]
-    RR_STITCH_ORDER = sorted(candidate_stitches)
+    RR_STITCH_ORDER = sorted(CANDIDATE_STITCHES.keys())
     sid = RR_STITCH_ORDER[(index + offset) % len(RR_STITCH_ORDER)]
-    mets = e2e_metrics_for_stitch(
-        sid, placement, topo, rng, task_profile_name,
-        greedy_objective="rr", rr_index=index, rr_offset=0
-    )
+    mets = e2e_metrics_for_stitch(sid, placement, topo, rng, task_profile_name, greedy_objective="rr", rr_index=index, rr_offset=offset)
     out = {"stitch_id": sid, **mets}
     out["selection_time_ms"] = (time.perf_counter() - t0) * 1000.0
     return out
-
 
 # ----------------------------------------------------------------------------- #
 # Rejection row                                                                 #
@@ -321,6 +278,10 @@ def _reject_row(stitch_id=None, acc=np.nan, slo_hit=False):
         "hop_count": 0,
         "acc": acc,
         "met_slo": slo_hit,
+        # Keep workflow SLO metadata here; selector uses stage SLO internally.
+        "slo_ms": getattr(config, "SLO_MS_WORKFLOW", None),
+        "slo_excess_ms": float("inf") if not slo_hit else 0.0,
+        "slo_excess_pct": float("nan"),
         "met_dual_slo": slo_hit,
         "selection_time_ms": 0.0,
         "ssp_calls": 0,

@@ -16,7 +16,7 @@ NodeID = Any  # preserve whatever type your topology uses (str/int/objects)
 
 # ==== DEBUG / probe toggles (cheap) ===========================================
 DEBUG = False
-MIN_EDGE_MS = 0.0
+MIN_EDGE_MS = config.SLO_MS_TASK
 SHOW_PROBE = False
 PROBE_NODES = 50
 PROBE_NEIGHBORS = 50
@@ -359,7 +359,7 @@ def _neighbors_as_pairs_no_snapshot(ftopo, u: NodeID) -> List[Tuple[NodeID, floa
                 w = float(_call_if_callable(w))
             except Exception:
                 continue
-            if w > MIN_EDGE_MS and (not forward_only or _is_future_neighbor(ftopo, u, v)):
+            if w < MIN_EDGE_MS and (not forward_only or _is_future_neighbor(ftopo, u, v)):
                 out.append((v, w))
         return out
 
@@ -372,13 +372,13 @@ def _neighbors_as_pairs_no_snapshot(ftopo, u: NodeID) -> List[Tuple[NodeID, floa
                 w = float(_call_if_callable(w))
             except Exception:
                 continue
-            if w > MIN_EDGE_MS and (not forward_only or _is_future_neighbor(ftopo, u, v)):
+            if w < MIN_EDGE_MS and (not forward_only or _is_future_neighbor(ftopo, u, v)):
                 out.append((v, w))
             continue
         pair = _edge_to_pair(item)
         if pair is not None:
             v, w = pair
-            if w > MIN_EDGE_MS and (not forward_only or _is_future_neighbor(ftopo, u, v)):
+            if w < MIN_EDGE_MS and (not forward_only or _is_future_neighbor(ftopo, u, v)):
                 out.append((v, w))
     return out
 
@@ -398,7 +398,7 @@ def _neighbors_as_pairs(ftopo, u: NodeID) -> List[Tuple[NodeID, float]]:
                 w = float(_call_if_callable(w))
             except Exception:
                 continue
-            if w > MIN_EDGE_MS and (not forward_only or _is_future_neighbor(ftopo, u, v)):
+            if w < MIN_EDGE_MS and (not forward_only or _is_future_neighbor(ftopo, u, v)):
                 out.append((v, w))
         return out
 
@@ -411,13 +411,13 @@ def _neighbors_as_pairs(ftopo, u: NodeID) -> List[Tuple[NodeID, float]]:
                 w = float(_call_if_callable(w))
             except Exception:
                 continue
-            if w > MIN_EDGE_MS and (not forward_only or _is_future_neighbor(ftopo, u, v)):
+            if w < MIN_EDGE_MS and (not forward_only or _is_future_neighbor(ftopo, u, v)):
                 out.append((v, w))
             continue
         pair = _edge_to_pair(item)
         if pair is not None:
             v, w = pair
-            if w > MIN_EDGE_MS and (not forward_only or _is_future_neighbor(ftopo, u, v)):
+            if w < MIN_EDGE_MS and (not forward_only or _is_future_neighbor(ftopo, u, v)):
                 out.append((v, w))
     return out
 
@@ -741,7 +741,7 @@ def _dijkstra_binary(
             break
 
         for v, w in _neighbors_as_pairs(ftopo, u):
-            if w <= MIN_EDGE_MS:
+            if w > MIN_EDGE_MS:
                 continue
             nd = d + w
             if slo_ms is not None and nd > slo_ms:
@@ -832,7 +832,7 @@ def _dijkstra_radix(
             break
 
         for v, w in _neighbors_as_pairs(ftopo, u):
-            if w <= MIN_EDGE_MS:
+            if w > MIN_EDGE_MS:
                 continue
             iw = int(round(w * scale))
             if iw <= 0:
@@ -871,7 +871,7 @@ def _dijkstra_tree_binary(
             continue
 
         for v, w in _neighbors_as_pairs(ftopo, u):
-            if w <= MIN_EDGE_MS:
+            if w > MIN_EDGE_MS:
                 continue
             nd = d + w
             if slo_ms is not None and nd > slo_ms:
@@ -907,7 +907,7 @@ def _dijkstra_tree_radix(
             continue
 
         for v, w in _neighbors_as_pairs(ftopo, u):
-            if w <= MIN_EDGE_MS:
+            if w > MIN_EDGE_MS:
                 continue
             iw = int(round(w * scale))
             if iw <= 0:

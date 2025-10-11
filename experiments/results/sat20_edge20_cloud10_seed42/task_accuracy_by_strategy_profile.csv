@@ -1,0 +1,16 @@
+profile,strategy,acc_mean
+extract-frames,Best-Acc,90.47
+extract-frames,Lowest-Latency,87.342
+extract-frames,Random,86.585
+extract-frames,Round-Robin,88.075
+extract-frames,SLO-first,89.45
+object-det,Best-Acc,90.47
+object-det,Lowest-Latency,87.977
+object-det,Random,87.741
+object-det,Round-Robin,88.075
+object-det,SLO-first,89.304
+prepare-ds,Best-Acc,90.47
+prepare-ds,Lowest-Latency,86.571
+prepare-ds,Random,86.098
+prepare-ds,Round-Robin,88.075
+prepare-ds,SLO-first,89.694

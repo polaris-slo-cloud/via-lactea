@@ -9,13 +9,13 @@ import os
 SEED               = 42
 
 # Simulation sizes
-NUM_RUNS_TASK      = 1
-NUM_RUNS_WORKFLOW  = 1
+NUM_RUNS_TASK      = 10
+NUM_RUNS_WORKFLOW  = 10
 WORKFLOW_STAGES    = 3
 
 # SLO knobs
-SLO_MS_TASK        = 75.0    # task-level SLO (also used for workflow 'task-SLO' checks)
-SLO_MS_STAGE       = 150.0    # per-stage SLO used by SLO-first in workflows
+SLO_MS_TASK        = 70.0    # task-level SLO (also used for workflow 'task-SLO' checks)
+SLO_MS_STAGE       = 600.0    # per-stage SLO used by SLO-first in workflows
 SLO_ACC_MIN = 89.0  # example minimum accuracy (%) required
 
 
@@ -28,6 +28,12 @@ REQUIRE_DISTINCT_NODES = True
 # Results directory
 BASE_RESULTS_DIR = "../experiments/results"
 RESULT_DIR = None  # or set to a fixed dir string
+
+SLO_MS_TASK_PER_PROFILE = {
+    "extract-frames": 1000.0,   # per-hop ms allowed for this profile
+    "object-det": 1000.0,
+    "prepare-ds": 1000.0,
+}
 
 SATS_PER_RING = 100
 NUM_RINGS     = 10

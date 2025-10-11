@@ -146,19 +146,30 @@ def _pick_pair(
         return _first_reachable_pair(topo, src_candidates, dst_candidates)
 
     if objective == "rr":
-        # choose src deterministically via RR on the available src_candidates
         s = src_candidates[(rr_index + rr_offset + hop_idx) % len(src_candidates)]
         start_idx = (rr_index + rr_offset + hop_idx) % len(dst_candidates)
         d = _rr_reachable_dst(topo, s, dst_candidates, start_idx)
         return None if d is None else (s, d)
 
     if objective == "random2":
-        # random source from candidates, then pick best among k random reachable dsts
         s = rng.choice(src_candidates)
         d = _randomk_reachable_dst(topo, rng, s, dst_candidates, random_k)
         return None if d is None else (s, d)
 
     raise ValueError(f"Unknown greedy_objective: {objective}")
+
+# ---------------------------
+# SLO helpers
+# ---------------------------
+
+def _slo_fields(total_ms: float, slo_ms: Optional[float]):
+    """Return (met_slo, excess_ms, excess_pct)."""
+    if slo_ms is None or not math.isfinite(slo_ms) or slo_ms <= 0:
+        return True, 0.0, float("nan")
+    excess = max(0.0, total_ms - slo_ms)
+    met = (excess <= 1e-9)
+    pct = (100.0 * excess / slo_ms) if slo_ms > 0 else float("nan")
+    return met, excess, pct
 
 # ---------------------------
 # E2E metrics
@@ -186,16 +197,40 @@ def e2e_metrics_for_stitch(
         if acc_min is None:
             acc_min = 0.0
         if acc_val < acc_min:
-            return {"latency_ms": float("inf"), "compute_ms": 0.0, "net_latency_ms": float("inf"),
-                    "payload_mb": 0.0, "link_mb": 0.0, "hop_count": 0, "acc": acc_val}
+            return {
+                "latency_ms": float("inf"),
+                "compute_ms": 0.0,
+                "net_latency_ms": float("inf"),
+                "payload_mb": 0.0,
+                "link_mb": 0.0,
+                "hop_count": 0,
+                "acc": acc_val,
+                "per_stage": [],
+                "met_slo": False,
+                "slo_ms": getattr(config, "SLO_MS_WORKFLOW", None),
+                "slo_excess_ms": float("inf"),
+                "slo_excess_pct": float("nan"),
+            }
 
     # Candidate layers
     layers: List[List[Node]] = []
     for m in modules:
         cand = _nodes_for_module(placement, m)
         if not cand:
-            return {"latency_ms": float("inf"), "compute_ms": 0.0, "net_latency_ms": float("inf"),
-                    "payload_mb": 0.0, "link_mb": 0.0, "hop_count": 0, "acc": acc_val}
+            return {
+                "latency_ms": float("inf"),
+                "compute_ms": 0.0,
+                "net_latency_ms": float("inf"),
+                "payload_mb": 0.0,
+                "link_mb": 0.0,
+                "hop_count": 0,
+                "acc": acc_val,
+                "per_stage": [],
+                "met_slo": False,
+                "slo_ms": getattr(config, "SLO_MS_WORKFLOW", None),
+                "slo_excess_ms": float("inf"),
+                "slo_excess_pct": float("nan"),
+            }
         layers.append(cand)
 
     # 0 or 1 module edge case
@@ -204,8 +239,23 @@ def e2e_metrics_for_stitch(
         if modules:
             host = layers[0][0]
             compute_ms += compute_time_ms(modules[0], host, rng, task_profile_name)
-        return {"latency_ms": compute_ms, "compute_ms": compute_ms, "net_latency_ms": 0.0,
-                "payload_mb": 0.0, "link_mb": 0.0, "hop_count": 0, "acc": acc_val}
+        total = compute_ms
+        slo_wf = getattr(config, "SLO_MS_WORKFLOW", None)
+        met, exc_ms, exc_pct = _slo_fields(total, slo_wf)
+        return {
+            "latency_ms": total,
+            "compute_ms": compute_ms,
+            "net_latency_ms": 0.0,
+            "payload_mb": 0.0,
+            "link_mb": 0.0,
+            "hop_count": 0,
+            "acc": acc_val,
+            "per_stage": [{"module": modules[0], "compute_ms": compute_ms, "net_ms": 0.0, "seg_hops": 0, "payload_mb": 0.0}] if modules else [],
+            "met_slo": met,
+            "slo_ms": slo_wf,
+            "slo_excess_ms": exc_ms,
+            "slo_excess_pct": exc_pct,
+        }
 
     # ---------- Select a concrete node chain ----------
     chosen: List[Optional[Node]] = [None] * len(modules)
@@ -217,8 +267,20 @@ def e2e_metrics_for_stitch(
         rr_index=rr_index, rr_offset=rr_offset, hop_idx=0, random_k=random_k
     )
     if pair is None:
-        return {"latency_ms": float("inf"), "compute_ms": 0.0, "net_latency_ms": float("inf"),
-                "payload_mb": 0.0, "link_mb": 0.0, "hop_count": 0, "acc": acc_val}
+        return {
+            "latency_ms": float("inf"),
+            "compute_ms": 0.0,
+            "net_latency_ms": float("inf"),
+            "payload_mb": 0.0,
+            "link_mb": 0.0,
+            "hop_count": 0,
+            "acc": acc_val,
+            "per_stage": [],
+            "met_slo": False,
+            "slo_ms": getattr(config, "SLO_MS_WORKFLOW", None),
+            "slo_excess_ms": float("inf"),
+            "slo_excess_pct": float("nan"),
+        }
     chosen[0], chosen[1] = pair
 
     # Next hops: src is fixed (chosen[hop]) to any dst in next layer
@@ -229,8 +291,20 @@ def e2e_metrics_for_stitch(
             rr_index=rr_index, rr_offset=rr_offset, hop_idx=hop, random_k=random_k
         )
         if pair is None:
-            return {"latency_ms": float("inf"), "compute_ms": 0.0, "net_latency_ms": float("inf"),
-                    "payload_mb": 0.0, "link_mb": 0.0, "hop_count": 0, "acc": acc_val}
+            return {
+                "latency_ms": float("inf"),
+                "compute_ms": 0.0,
+                "net_latency_ms": float("inf"),
+                "payload_mb": 0.0,
+                "link_mb": 0.0,
+                "hop_count": 0,
+                "acc": acc_val,
+                "per_stage": [],
+                "met_slo": False,
+                "slo_ms": getattr(config, "SLO_MS_WORKFLOW", None),
+                "slo_excess_ms": float("inf"),
+                "slo_excess_pct": float("nan"),
+            }
         _, chosen[hop + 1] = pair
 
     # ---------- Compute metrics ----------
@@ -239,12 +313,16 @@ def e2e_metrics_for_stitch(
     payload_mb_total = 0.0
     link_mb_total    = 0.0
     hop_count_total  = 0
+    per_stage: List[Dict] = []
 
-    # 1) compute times
+    # 1) compute times per module
+    per_module_compute = []
     for m, host in zip(modules, chosen):
-        compute_ms += compute_time_ms(m, host, rng, task_profile_name)
+        ct = compute_time_ms(m, host, rng, task_profile_name)
+        per_module_compute.append(ct)
+        compute_ms += ct
 
-    # 2) network hops (actual edges)
+    # 2) network per edge (between consecutive modules)
     for i in range(len(modules) - 1):
         src_node = chosen[i]
         dst_node = chosen[i + 1]
@@ -252,25 +330,55 @@ def e2e_metrics_for_stitch(
         payload_mb_total += payload
 
         hops = route_hops_nodes(topo, src_node.nid, dst_node.nid)  # list of edge objects
-        hop_count_total += len(hops)
+        seg_hops = len(hops)
+        hop_count_total += seg_hops
 
         if not hops:
             net_latency_ms = float("inf")
+            # record stage with inf net; compute still valid
+            per_stage.append({
+                "m_src": modules[i],
+                "m_dst": modules[i+1],
+                "compute_ms": per_module_compute[i],
+                "net_ms": float("inf"),
+                "seg_hops": 0,
+                "payload_mb": payload,
+            })
             break
 
+        seg_net_ms = 0.0
         for e in hops:
             hop_ms = _hop_latency_ms(e, payload, rng)
-            net_latency_ms += hop_ms
-            link_mb_total  += payload
+            seg_net_ms += hop_ms
+            link_mb_total += payload  # payload counted per hop
 
-    latency_ms = compute_ms + net_latency_ms
+        net_latency_ms += seg_net_ms
+        per_stage.append({
+            "m_src": modules[i],
+            "m_dst": modules[i+1],
+            "compute_ms": per_module_compute[i],
+            "net_ms": seg_net_ms,
+            "seg_hops": seg_hops,
+            "payload_mb": payload,
+        })
+
+    total_latency_ms = compute_ms + net_latency_ms
+
+    # E2E SLO (workflow-level)
+    slo_wf = getattr(config, "SLO_MS_WORKFLOW", None)
+    met, exc_ms, exc_pct = _slo_fields(total_latency_ms, slo_wf)
 
     return {
-        "latency_ms":     net_latency_ms,
+        "latency_ms":     net_latency_ms,   # total = compute + net
         "compute_ms":     net_latency_ms,
         "net_latency_ms": net_latency_ms,
         "payload_mb":     payload_mb_total,
         "link_mb":        link_mb_total,
         "hop_count":      hop_count_total,
         "acc":            acc_val,
+        "per_stage":      per_stage,          # for per-stage SLO analysis upstream
+        "met_slo":        met,
+        "slo_ms":         slo_wf,
+        "slo_excess_ms":  exc_ms,
+        "slo_excess_pct": exc_pct,
     }

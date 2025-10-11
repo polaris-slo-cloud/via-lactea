@@ -9,12 +9,17 @@ from typing import List, Dict, Tuple, Optional, Callable
 import pandas as pd
 
 from . import config
-from .selection import always_best_accuracy, lowest_latency, random_pick_stitch, choose_stitch_for_task, \
-    round_robin_pick_stitch, _reject_row
+from .selection import (
+    always_best_accuracy,
+    lowest_latency,
+    random_pick_stitch,
+    choose_stitch_for_task,
+    round_robin_pick_stitch,
+    _reject_row,
+)
 from .placement import assign_modules_to_nodes, build_local_allowed_pairs_all_stitches
 from .profiles import CANDIDATE_STITCHES
 from .topology import Topology
-
 
 
 # ---------------------------
@@ -24,6 +29,16 @@ from .topology import Topology
 def _all_modules() -> List[str]:
     """All modules that can appear in any stitch."""
     return sorted({m for s in CANDIDATE_STITCHES.values() for m in s["modules"]})
+
+
+def _slo_fields(total_ms: float, slo_ms: Optional[float]):
+    """Return (met_slo, excess_ms, excess_pct). If slo_ms is None/invalid, treat as met."""
+    if slo_ms is None or not math.isfinite(slo_ms) or slo_ms <= 0:
+        return True, 0.0, float("nan")
+    excess = max(0.0, float(total_ms) - float(slo_ms))
+    met = (excess <= 1e-9)
+    pct = (100.0 * excess / float(slo_ms))
+    return met, excess, pct
 
 
 def _build_run_placement(
@@ -91,7 +106,12 @@ def _eval_strategy_once(
     slo_ms: float,
     rr_index: int = 0,
 ) -> Dict:
-    """Run one strategy and return a metrics dict (with met_slo filled)."""
+    """
+    Run one strategy and return a metrics dict with a **normalized E2E SLO**:
+    - `latency_ms` is assumed to be total (compute + net) from the picker (wrappers do this).
+    - We recompute `met_slo`, `slo_ms`, `slo_excess_ms`, `slo_excess_pct` here so all strategies
+      are compared against the same simulator-provided SLO, even if the picker used a different notion.
+    """
     if strategy_name == "Round-Robin":
         res = round_robin_pick_stitch(rr_index, placement, topo, rng, profile)
     elif strategy_name == "SLO-first":
@@ -103,9 +123,14 @@ def _eval_strategy_once(
     if res is None:
         res = _reject_row()
 
-    res = dict(res)  # copy before annotating
-    res["met_slo"] = (res.get("latency_ms", math.inf) <= slo_ms)
-    return res
+    out = dict(res)  # copy before annotating
+    total = float(out.get("latency_ms", math.inf))
+    met, exc_ms, exc_pct = _slo_fields(total, slo_ms)
+    out["met_slo"] = met
+    out["slo_ms"] = slo_ms
+    out["slo_excess_ms"] = exc_ms
+    out["slo_excess_pct"] = exc_pct
+    return out
 
 
 # ---------------------------
@@ -160,6 +185,14 @@ def simulate_workflow(
     """
     Simulate a K-stage workflow. For each stage, create a fresh placement and
     apply each selection strategy; accumulate totals over stages.
+
+    We aggregate:
+      - latency_ms:            sum over stages
+      - payload_mb / link_mb:  sum over stages
+      - hop_count:             sum over stages
+      - selection_time_ms:     sum over stages (to reflect total selector runtime)
+      - ssp_calls:             sum over stages
+      - met_slo:               True only if *all* stages met the (E2E) stage SLO
     """
     assert len(stage_profiles) == stages
     base_rng = random.Random(seed)
@@ -181,9 +214,11 @@ def simulate_workflow(
         for name, picker in STRATEGIES:
             lat_sum = payload_sum = link_sum = 0.0
             hops_sum = 0
+            sel_time_sum = 0.0
+            ssp_calls_sum = 0
             acc_last: Optional[float] = None
             met_stage_count = 0
-            met_task_slo_count = 0
+            met_task_slo_count = 0  # same as met_stage_count, but kept for clarity
 
             for k in range(stages):
                 prof = stage_profiles[k]
@@ -202,8 +237,14 @@ def simulate_workflow(
                 hops_sum    += int(mets.get("hop_count", 0))
                 acc_last     = mets.get("acc", acc_last)
 
-                met_stage_count     += int(mets.get("met_slo", False))
-                met_task_slo_count  += int(latency_ms <= getattr(config, "SLO_MS_TASK", slo_ms_stage))
+                # accumulate selector instrumentation if present
+                sel_time_sum += float(mets.get("selection_time_ms", 0.0))
+                ssp_calls_sum += int(mets.get("ssp_calls", 0))
+
+                # E2E stage SLO (already normalized in _eval_strategy_once)
+                met = bool(mets.get("met_slo", False))
+                met_stage_count += int(met)
+                met_task_slo_count += int(met)
 
             records.append({
                 "run": run,
@@ -213,7 +254,9 @@ def simulate_workflow(
                 "payload_mb": payload_sum,
                 "link_mb": link_sum,
                 "hop_count": hops_sum,
-                "met_slo": (met_stage_count == stages),
+                "selection_time_ms": sel_time_sum,
+                "ssp_calls": ssp_calls_sum,
+                "met_slo": (met_stage_count == stages),  # all stages met the (E2E) stage SLO
                 "stages_met": met_stage_count,
                 "met_task_slo_all": (met_task_slo_count == stages),
                 "stages_met_task_slo": met_task_slo_count,
@@ -222,25 +265,3 @@ def simulate_workflow(
             })
 
     return pd.DataFrame(records)
-
-
-# ---------------------------
-# Misc helpers (Pareto)
-# ---------------------------
-
-def pareto_front(points):
-    """
-    Boolean mask of non-dominated points for (latency, accuracy).
-    Lower latency is better; higher accuracy is better.
-    """
-    import numpy as np
-    N = points.shape[0]
-    dominated = np.zeros(N, dtype=bool)
-    for i in range(N):
-        if dominated[i]:
-            continue
-        Li, Ai = points[i]
-        mask = (points[:, 0] <= Li) & (points[:, 1] >= Ai) & ((points[:, 0] < Li) | (points[:, 1] > Ai))
-        if mask.any():
-            dominated[i] = True
-    return ~dominated

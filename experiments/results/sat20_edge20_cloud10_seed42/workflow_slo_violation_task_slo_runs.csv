@@ -1,0 +1,6 @@
+strategy,slo_violation_pct_per_run_task_slo
+Best-Acc,2611.481917538321
+Lowest-Latency,986.257208196803
+Random,1880.5595029207336
+Round-Robin,2672.288460952387
+SLO-first,810.0
