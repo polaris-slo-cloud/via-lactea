@@ -6,6 +6,8 @@ import math
 import heapq
 import os
 import re
+import time
+from collections import OrderedDict
 from collections.abc import Iterable as _IterableABC
 
 from . import config
@@ -28,6 +30,17 @@ SSSP_ALGO = os.getenv("VL_SSSP_ALGO", "auto").strip().lower()
 
 # ---- When to switch from pairwise to full SSSP tree per (src,slo) ------------
 _SSSP_TREE_THRESHOLD = int(os.getenv("VL_SSSP_TREE_THRESHOLD", "3"))
+
+# ---- Global per-source tree cache (LRU+TTL) ----------------------------------
+_GLOBAL_SSSP_LRU_CAP = int(os.getenv("VL_SSSP_LRU_CAP", "128"))
+_GLOBAL_SSSP_TTL_SEC = float(os.getenv("VL_SSSP_TTL_SEC", "60"))
+
+class _TreeEntry:
+    __slots__ = ("dist", "parent", "tstamp")
+    def __init__(self, dist, parent, tstamp):
+        self.dist = dist
+        self.parent = parent
+        self.tstamp = tstamp
 
 def set_sssp_algo(name: str):
     """Change algorithm choice at runtime: 'binary' | 'radix' | 'auto'."""
@@ -231,7 +244,6 @@ def _ensure_adj_snapshot(ftopo):
     """Create a compact, read-only adjacency cache on the filtered topology."""
     if getattr(ftopo, "_vl_adj_ready", False):
         return
-    # Build without installing until done (avoid recursion with _neighbors_raw)
     adj: Dict[Any, List[Tuple[Any, float]]] = {}
 
     nodes_iter = None
@@ -248,33 +260,27 @@ def _ensure_adj_snapshot(ftopo):
         if isinstance(g, dict):
             nodes_iter = g.keys()
     if nodes_iter is None:
-        # Give up quietly—normal path will continue to call neighbors()
         return
 
     for u in nodes_iter:
         u_id = getattr(u, "nid", u)
-        # use existing normalization
         vs = _neighbors_as_pairs_no_snapshot(ftopo, u_id)
         if vs:
             adj[u_id] = vs
 
-    # Install snapshot
     setattr(ftopo, "_vl_adj", adj)
     setattr(ftopo, "_vl_adj_ready", True)
 
 def _neighbors_raw(ftopo, u) -> Optional[Iterable]:
-    # If we have a snapshot, use it (fast path; list of (v,w) tuples)
     adj = getattr(ftopo, "_vl_adj", None)
     if adj is not None:
         return adj.get(u, [])
 
-    # Fallback to topology methods
     try:
         return ftopo.neighbors(u)
     except Exception:
         pass
 
-    # Try resolving to node object
     resolver = _ensure_resolver(ftopo)
     fetcher = resolver.get("_fetcher_")
     if u in resolver:
@@ -292,7 +298,6 @@ def _neighbors_raw(ftopo, u) -> Optional[Iterable]:
         except Exception:
             pass
 
-    # Some topologies expose neighbors_by_id / neighbours
     for fn in ("neighbors_by_id", "neighbours", "neighborsID"):
         if hasattr(ftopo, fn) and callable(getattr(ftopo, fn)):
             try:
@@ -300,21 +305,18 @@ def _neighbors_raw(ftopo, u) -> Optional[Iterable]:
             except Exception:
                 pass
 
-    # Try stringified id
     try:
         return ftopo.neighbors(str(u))
     except Exception:
         return None
 
 def _neighbors_as_pairs_no_snapshot(ftopo, u: NodeID) -> List[Tuple[NodeID, float]]:
-    """Normalization that ignores the snapshot—used during snapshot build."""
     raw = None
     try:
         raw = ftopo.neighbors(u)
     except Exception:
         pass
     if raw is None:
-        # Try the generic resolution chain (copy from _neighbors_raw without snapshot)
         resolver = _ensure_resolver(ftopo)
         fetcher = resolver.get("_fetcher_")
         if u in resolver:
@@ -480,14 +482,49 @@ def _slo_key(slo_ms: Optional[float]) -> Optional[int]:
         return None
     return getattr(config, "SLO_MS_TASK", None)
 
-# --- Cached shortest path (adaptive, USED BY selection.py) --------------------
+# --- Global LRU helpers -------------------------------------------------------
+
+def _global_lru(ftopo) -> OrderedDict:
+    if not hasattr(ftopo, "_vl_sssp_lru"):
+        setattr(ftopo, "_vl_sssp_lru", OrderedDict())
+    return getattr(ftopo, "_vl_sssp_lru")
+
+def _global_key(ftopo, src, sloK):
+    view = (
+        getattr(config, "RING_FORWARD_ONLY", False),
+        getattr(ftopo, "_per_edge_cap", None),  # optional: if your filtered view stores this
+        WEIGHT_FROM_RANGE,
+    )
+    algo = getattr(ftopo, "_vl_algo", ("binary", 1))
+    ver  = getattr(ftopo, "version_id", 0)
+    return (src, sloK, view, algo, ver)
+
+def _get_global_tree(ftopo, src, sloK, now):
+    lru = _global_lru(ftopo)
+    key = _global_key(ftopo, src, sloK)
+    ent = lru.get(key)
+    if ent and (now - ent.tstamp) <= _GLOBAL_SSSP_TTL_SEC:
+        lru.move_to_end(key)
+        return ent.dist, ent.parent
+    return None
+
+def _put_global_tree(ftopo, src, sloK, dist, parent, now):
+    lru = _global_lru(ftopo)
+    key = _global_key(ftopo, src, sloK)
+    lru[key] = _TreeEntry(dist, parent, now)
+    lru.move_to_end(key)
+    while len(lru) > _GLOBAL_SSSP_LRU_CAP:
+        lru.popitem(last=False)
+
+# --- Cached shortest path (adaptive + global LRU, USED BY selection.py) -------
 
 def _pair_shortest_cached(ftopo, src, dst, dijk_cache, slo_ms=None):
     """
     Adaptive strategy:
       • First few distinct dsts for the same (src,slo) -> run pairwise Dijkstra (cheaper).
       • Once fan-out reaches _SSSP_TREE_THRESHOLD -> compute a single tree & reuse.
-      • Everything cached inside dijk_cache (still per-stitch as before).
+      • Per-process global LRU of per-source trees to reuse work across stitches.
+      • Everything remains backward-compatible with selection.py.
     """
     if SHOW_PROBE:
         flag = getattr(ftopo, "_vl_probe_done", False)
@@ -508,6 +545,22 @@ def _pair_shortest_cached(ftopo, src, dst, dijk_cache, slo_ms=None):
     if hit is not None:
         return hit
 
+    # If a global tree exists, answer from it and plant into per-call cache
+    now = time.time()
+    gtree = _get_global_tree(ftopo, src, sloK, now)
+    if gtree is not None:
+        dist_map, parent_map = gtree
+        dist = dist_map.get(dst)
+        if dist is not None and math.isfinite(dist):
+            path = _reconstruct_path(parent_map, src, dst)
+            res = (float(dist), path if path and len(path) >= 2 else None)
+        else:
+            res = (None, None)
+        cache_slo[dst] = res
+        # Also install the tree into this src bucket so subsequent dsts are fast
+        cache_src[("__tree__", sloK)] = (dist_map, parent_map)
+        return res
+
     # Per-(src,slo) counters & tree slots
     cnt_key = ("__cnt__", sloK)
     tree_key = ("__tree__", sloK)
@@ -515,7 +568,7 @@ def _pair_shortest_cached(ftopo, src, dst, dijk_cache, slo_ms=None):
     count = cache_src.get(cnt_key, 0)
     cache_src[cnt_key] = count + 1
 
-    # If we already have a tree, answer from it
+    # If we already have a tree (from earlier misses), use it
     tree = cache_src.get(tree_key)
     if tree is not None:
         dist_map, parent_map = tree
@@ -541,6 +594,7 @@ def _pair_shortest_cached(ftopo, src, dst, dijk_cache, slo_ms=None):
     # Threshold reached: compute single-source SSSP tree and serve from it
     dist_map, parent_map = _single_source_sssp(ftopo, src, slo_ms=slo_ms)
     cache_src[tree_key] = (dist_map, parent_map)
+    _put_global_tree(ftopo, src, sloK, dist_map, parent_map, now)
 
     dist = dist_map.get(dst)
     if dist is not None and math.isfinite(dist):
@@ -554,7 +608,6 @@ def _pair_shortest_cached(ftopo, src, dst, dijk_cache, slo_ms=None):
 # --- Heuristics & plumbing ----------------------------------------------------
 
 def _maybe_integerish_weights(ftopo, sample_cap: int = 512, tol: float = 1e-6) -> Tuple[bool, int]:
-    # Prefer to sample from snapshot if available (fewer method calls)
     _ensure_adj_snapshot(ftopo)
     adj = getattr(ftopo, "_vl_adj", None)
 

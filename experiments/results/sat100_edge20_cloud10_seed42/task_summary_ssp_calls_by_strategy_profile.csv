@@ -3,14 +3,14 @@ extract-frames,Best-Acc,,,,
 extract-frames,Lowest-Latency,,,,
 extract-frames,Random,,,,
 extract-frames,Round-Robin,,,,
-extract-frames,SLO-first,804.2,578.0,1324.0,1375.2
+extract-frames,SLO-first,360.0,360.0,360.0,360.0
 object-det,Best-Acc,,,,
 object-det,Lowest-Latency,,,,
 object-det,Random,,,,
 object-det,Round-Robin,,,,
-object-det,SLO-first,835.0,589.0,1457.6,1522.72
+object-det,SLO-first,1168.0,1168.0,1168.0,1168.0
 prepare-ds,Best-Acc,,,,
 prepare-ds,Lowest-Latency,,,,
 prepare-ds,Random,,,,
 prepare-ds,Round-Robin,,,,
-prepare-ds,SLO-first,1195.0,1451.0,1549.2,1567.44
+prepare-ds,SLO-first,448.0,448.0,448.0,448.0

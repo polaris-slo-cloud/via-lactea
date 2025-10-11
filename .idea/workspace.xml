@@ -5,34 +5,194 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4d95d857-c60d-465e-8cfc-663a3b2d0ac4" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/via-lactea.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/experiments/aggregated_results.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/experiments/ray/app.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/experiments/ray/launch.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/inference/infer_snn.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/inference/infer_snnet_autoroute.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/inference/pipeline-sharding.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/simu/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/simu/config.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/simu/leo-simu.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/simu/placement.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/simu/profiles.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/simu/runtime.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/simu/selection.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/simu/simulate.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/simu/stats_io.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/simu/topology.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/stitch/build_route_stats.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/stitch/eval_stitch_ids.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/stitch/model_spliting.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/stitch/train_stitched_head.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/task_accuracy_by_strategy_profile.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/task_accuracy_by_strategy_profile.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/task_runs_all.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/task_runs_all.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/task_summary_ALL_by_strategy_profile.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/task_summary_ALL_by_strategy_profile.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/task_summary_hopcount_by_strategy_profile.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/task_summary_hopcount_by_strategy_profile.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/task_summary_latency_by_strategy_profile.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/task_summary_latency_by_strategy_profile.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/task_summary_link_by_strategy_profile.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/task_summary_link_by_strategy_profile.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/task_summary_payload_by_strategy_profile.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/task_summary_payload_by_strategy_profile.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/task_summary_selector_time_by_strategy_profile.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/task_summary_selector_time_by_strategy_profile.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/task_summary_ssp_calls_by_strategy_profile.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/task_summary_ssp_calls_by_strategy_profile.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/workflow_accuracy_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/workflow_accuracy_by_strategy.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/workflow_runs.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/workflow_runs.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/workflow_summary_ALL_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/workflow_summary_ALL_by_strategy.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/workflow_summary_hopcount_by_strategy.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/workflow_summary_latency_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/workflow_summary_latency_by_strategy.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/workflow_summary_link_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/workflow_summary_link_by_strategy.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/workflow_summary_payload_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat100_edge20_cloud10_seed42/workflow_summary_payload_by_strategy.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/1000/task_accuracy_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/1000/task_runs_all.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/1000/task_slo_violation_by_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/1000/task_summary_ALL_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/1000/task_summary_hopcount_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/1000/task_summary_latency_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/1000/task_summary_link_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/1000/task_summary_payload_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/1000/workflow_accuracy_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/1000/workflow_runs.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/1000/workflow_slo_violation_task_slo_runs.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/1000/workflow_slo_violation_task_slo_stages.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/1000/workflow_summary_ALL_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/1000/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/1000/workflow_summary_latency_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/1000/workflow_summary_link_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/1000/workflow_summary_payload_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/10000/task_accuracy_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/10000/task_runs_all.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/10000/task_slo_violation_by_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/10000/task_summary_ALL_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/10000/task_summary_hopcount_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/10000/task_summary_latency_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/10000/task_summary_link_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/10000/task_summary_payload_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/10000/workflow_accuracy_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/10000/workflow_runs.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/10000/workflow_slo_violation_task_slo_runs.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/10000/workflow_slo_violation_task_slo_stages.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/10000/workflow_summary_ALL_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/10000/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/10000/workflow_summary_latency_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/10000/workflow_summary_link_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/10000/workflow_summary_payload_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/2000/task_accuracy_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/2000/task_runs_all.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/2000/task_slo_violation_by_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/2000/task_summary_ALL_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/2000/task_summary_hopcount_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/2000/task_summary_latency_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/2000/task_summary_link_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/2000/task_summary_payload_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/2000/workflow_accuracy_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/2000/workflow_runs.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/2000/workflow_slo_violation_task_slo_runs.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/2000/workflow_slo_violation_task_slo_stages.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/2000/workflow_summary_ALL_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/2000/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/2000/workflow_summary_latency_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/2000/workflow_summary_link_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/2000/workflow_summary_payload_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/3000/task_accuracy_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/3000/task_runs_all.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/3000/task_slo_violation_by_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/3000/task_summary_ALL_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/3000/task_summary_hopcount_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/3000/task_summary_latency_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/3000/task_summary_link_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/3000/task_summary_payload_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/3000/workflow_accuracy_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/3000/workflow_runs.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/3000/workflow_slo_violation_task_slo_runs.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/3000/workflow_slo_violation_task_slo_stages.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/3000/workflow_summary_ALL_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/3000/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/3000/workflow_summary_latency_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/3000/workflow_summary_link_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/3000/workflow_summary_payload_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/4000/task_accuracy_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/4000/task_runs_all.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/4000/task_slo_violation_by_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/4000/task_summary_ALL_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/4000/task_summary_hopcount_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/4000/task_summary_latency_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/4000/task_summary_link_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/4000/task_summary_payload_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/4000/workflow_accuracy_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/4000/workflow_runs.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/4000/workflow_slo_violation_task_slo_runs.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/4000/workflow_slo_violation_task_slo_stages.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/4000/workflow_summary_ALL_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/4000/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/4000/workflow_summary_latency_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/4000/workflow_summary_link_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/4000/workflow_summary_payload_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/5000/task_accuracy_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/5000/task_runs_all.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/5000/task_slo_violation_by_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/5000/task_summary_ALL_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/5000/task_summary_hopcount_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/5000/task_summary_latency_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/5000/task_summary_link_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/5000/task_summary_payload_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/5000/workflow_accuracy_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/5000/workflow_runs.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/5000/workflow_slo_violation_task_slo_runs.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/5000/workflow_slo_violation_task_slo_stages.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/5000/workflow_summary_ALL_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/5000/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/5000/workflow_summary_latency_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/5000/workflow_summary_link_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/5000/workflow_summary_payload_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/6000/task_accuracy_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/6000/task_runs_all.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/6000/task_slo_violation_by_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/6000/task_summary_ALL_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/6000/task_summary_hopcount_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/6000/task_summary_latency_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/6000/task_summary_link_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/6000/task_summary_payload_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/6000/workflow_accuracy_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/6000/workflow_runs.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/6000/workflow_slo_violation_task_slo_runs.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/6000/workflow_slo_violation_task_slo_stages.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/6000/workflow_summary_ALL_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/6000/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/6000/workflow_summary_latency_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/6000/workflow_summary_link_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/6000/workflow_summary_payload_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/7000/task_accuracy_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/7000/task_runs_all.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/7000/task_slo_violation_by_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/7000/task_summary_ALL_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/7000/task_summary_hopcount_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/7000/task_summary_latency_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/7000/task_summary_link_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/7000/task_summary_payload_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/7000/workflow_accuracy_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/7000/workflow_runs.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/7000/workflow_slo_violation_task_slo_runs.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/7000/workflow_slo_violation_task_slo_stages.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/7000/workflow_summary_ALL_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/7000/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/7000/workflow_summary_latency_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/7000/workflow_summary_link_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/7000/workflow_summary_payload_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/8000/task_accuracy_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/8000/task_runs_all.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/8000/task_slo_violation_by_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/8000/task_summary_ALL_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/8000/task_summary_hopcount_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/8000/task_summary_latency_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/8000/task_summary_link_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/8000/task_summary_payload_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/8000/workflow_accuracy_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/8000/workflow_runs.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/8000/workflow_slo_violation_task_slo_runs.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/8000/workflow_slo_violation_task_slo_stages.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/8000/workflow_summary_ALL_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/8000/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/8000/workflow_summary_latency_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/8000/workflow_summary_link_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/8000/workflow_summary_payload_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/9000/task_accuracy_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/9000/task_runs_all.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/9000/task_slo_violation_by_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/9000/task_summary_ALL_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/9000/task_summary_hopcount_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/9000/task_summary_latency_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/9000/task_summary_link_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/9000/task_summary_payload_by_strategy_profile.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/9000/workflow_accuracy_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/9000/workflow_runs.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/9000/workflow_slo_violation_task_slo_runs.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/9000/workflow_slo_violation_task_slo_stages.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/9000/workflow_summary_ALL_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/9000/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/9000/workflow_summary_latency_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/9000/workflow_summary_link_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/via-lactea/9000/workflow_summary_payload_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/simu/selection_algo.py" beforeDir="false" afterPath="$PROJECT_DIR$/simu/selection_algo.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -194,6 +354,7 @@
       <workItem from="1760028182791" duration="3094000" />
       <workItem from="1760036706378" duration="28265000" />
       <workItem from="1760100864984" duration="1491000" />
+      <workItem from="1760186334207" duration="1107000" />
     </task>
     <servers />
   </component>

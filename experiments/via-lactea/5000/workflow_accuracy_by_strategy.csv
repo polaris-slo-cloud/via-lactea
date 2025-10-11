@@ -1,6 +1,0 @@
-strategy,acc_mean
-Best-Acc,95.16
-Lowest-Latency,94.0584
-Random,94.36685
-Round-Robin,94.3707
-SLO-first,94.0914
