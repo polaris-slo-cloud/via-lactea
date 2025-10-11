@@ -1,0 +1,16 @@
+profile,strategy,acc_mean
+default,Best-Acc,95.16
+default,Lowest-Latency,94.094125
+default,Random,94.394725
+default,Round-Robin,94.38052499999999
+default,SLO-first,94.0563
+fast,Best-Acc,95.16
+fast,Lowest-Latency,94.05742500000001
+fast,Random,94.329125
+fast,Round-Robin,94.38052499999999
+fast,SLO-first,94.071175
+heavy,Best-Acc,95.16
+heavy,Lowest-Latency,94.050525
+heavy,Random,94.370475
+heavy,Round-Robin,94.38052499999999
+heavy,SLO-first,94.038025

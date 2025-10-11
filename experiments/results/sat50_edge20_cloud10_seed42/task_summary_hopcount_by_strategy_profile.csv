@@ -1,0 +1,16 @@
+profile,strategy,mean,median,p95,p99
+extract-frames,Best-Acc,57.0,57.0,57.0,57.0
+extract-frames,Lowest-Latency,21.0,21.0,21.0,21.0
+extract-frames,Random,74.0,74.0,74.0,74.0
+extract-frames,Round-Robin,46.0,46.0,46.0,46.0
+extract-frames,SLO-first,9.0,9.0,9.0,9.0
+object-det,Best-Acc,69.0,69.0,69.0,69.0
+object-det,Lowest-Latency,16.0,16.0,16.0,16.0
+object-det,Random,71.0,71.0,71.0,71.0
+object-det,Round-Robin,59.0,59.0,59.0,59.0
+object-det,SLO-first,14.0,14.0,14.0,14.0
+prepare-ds,Best-Acc,66.0,66.0,66.0,66.0
+prepare-ds,Lowest-Latency,26.0,26.0,26.0,26.0
+prepare-ds,Random,50.0,50.0,50.0,50.0
+prepare-ds,Round-Robin,49.0,49.0,49.0,49.0
+prepare-ds,SLO-first,13.0,13.0,13.0,13.0
