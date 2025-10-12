@@ -1,16 +1,46 @@
-profile,strategy,mean,median,p95,p99
-extract-frames,Best-Acc,3142.0052792080005,3164.339260331653,4145.631771020147,4330.199288857371
-extract-frames,Lowest-Latency,710.2521205210302,710.760752693341,864.4807720491813,868.5749202170566
-extract-frames,Random,2896.3441982929103,2903.866597574958,3412.4401149357664,3428.0606623311332
-extract-frames,Round-Robin,3255.533157707556,3275.9270557018317,4482.43835117701,4650.620513055861
-extract-frames,SLO-first,705.5,690.0,923.7499999999999,968.75
-object-det,Best-Acc,2965.5505340282016,2993.1674763613573,4166.0521874668,4458.368821514265
-object-det,Lowest-Latency,637.0338474700677,644.0038341785894,781.1169549852359,813.2130809595754
-object-det,Random,2873.3172154746903,2490.803855294086,4283.363915007366,4336.39103371443
-object-det,Round-Robin,3156.254008891864,3053.240561398052,4577.571276164082,4602.759779376906
-object-det,SLO-first,599.5,595.0,842.0,856.4
-prepare-ds,Best-Acc,3577.736375434818,3734.1756638578554,4004.3411309041876,4043.217999733987
-prepare-ds,Lowest-Latency,557.3963043225717,584.3569779186141,708.7336277485771,744.8973096846772
-prepare-ds,Random,2900.5203247913205,3003.6329340384355,3413.6697635860646,3423.8277714795495
-prepare-ds,Round-Robin,3100.9027204775457,3001.3840031023274,4502.087449205169,4744.582022257205
-prepare-ds,SLO-first,686.0,727.5,1007.9999999999998,1101.6000000000001
+latency_ms by profile:
+       profile       strategy        mean
+extract-frames       Best-Acc 6799.159167
+extract-frames Lowest-Latency  490.282900
+extract-frames         Random 6015.292434
+extract-frames    Round-Robin 6596.103991
+extract-frames      SLO-first  352.000000
+    object-det       Best-Acc 6628.629327
+    object-det Lowest-Latency  503.083803
+    object-det         Random 6852.345570
+    object-det    Round-Robin 6957.114505
+    object-det      SLO-first  366.500000
+    prepare-ds       Best-Acc 6463.658199
+    prepare-ds Lowest-Latency  444.336127
+    prepare-ds         Random 5901.368861
+    prepare-ds    Round-Robin 7341.724772
+    prepare-ds      SLO-first  354.000000
+    workflow	Best-Acc	19891.446693
+    workflow	Lowest-Latency	1437.702830
+    workflow	Random	18769.006865
+    workflow	Round-Robin	20894.943268
+    workflow	SLO-first	1072.500000
+
+
+
+extract-frames       Best-Acc                  579.915917
+extract-frames Lowest-Latency                    0.000000
+extract-frames         Random                  501.529243
+extract-frames    Round-Robin                  559.610399
+extract-frames      SLO-first                    0.000000
+    object-det       Best-Acc                  562.862933
+    object-det Lowest-Latency                    0.000000
+    object-det         Random                  585.234557
+    object-det    Round-Robin                  595.711450
+    object-det      SLO-first                    0.000000
+    prepare-ds       Best-Acc                  546.365820
+    prepare-ds Lowest-Latency                    0.000000
+    prepare-ds         Random                  490.136886
+    prepare-ds    Round-Robin                  634.172477
+    prepare-ds      SLO-first                    0.000000
+     workflow	Best-Acc	563.05
+    workflow	Lowest-Latency	0
+    workflow	Random       525.633562
+   workflow     Round-Robin  596.498109
+    workflow	Round-Robin	0
+    workflow	SLO-first	0

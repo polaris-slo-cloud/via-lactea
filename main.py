@@ -1,11 +1,17 @@
 """
 Command-line entrypoint that reproduces the original script's outputs (graph-based),
 now also reporting selector runtime (selection_time_ms) and SSSP call counts (ssp_calls).
+
+New:
+- RUN MODE switch via config.RUN_MODE / VL_RUN_MODE / --mode {task,workflow,both}
 """
 
+import os
 import random
+import argparse
 import numpy as np
 import pandas as pd
+from typing import Optional  # 3.9-compatible Optional
 
 from simu import config
 from simu.topology import build_topology
@@ -24,24 +30,22 @@ def _prefixed(df: pd.DataFrame, keys, prefix: str) -> pd.DataFrame:
     return df.rename(columns=rename_map)
 
 
-def main():
-    rng = random.Random(config.SEED)
+def _resolve_run_mode(cli_mode: Optional[str]) -> str:
+    """
+    Priority: CLI (--mode) > env (VL_RUN_MODE) > config.RUN_MODE > default 'both'
+    """
+    if cli_mode:
+        mode = cli_mode
+    else:
+        mode = os.getenv("VL_RUN_MODE", getattr(config, "RUN_MODE", "both"))
+    mode = str(mode).strip().lower()
+    if mode not in {"task", "workflow", "both"}:
+        print(f"[warn] Unknown RUN_MODE='{mode}', falling back to 'both'.")
+        mode = "both"
+    return mode
 
-    # -------- BUILD THE GRAPH --------
-    topo = build_topology(
-        sats_per_ring     = config.SATS_PER_RING,
-        num_rings         = config.NUM_RINGS,
-        cloud_count       = config.NODE_COUNTS["cloud"],
-        edge_count        = config.NODE_COUNTS["edge"],
-        isl_neighbor_span = getattr(config, "ISL_NEIGHBOR_SPAN", 1),
-        gateways_per_ring = getattr(config, "GATEWAYS_PER_RING", 2),
-        inter_ring_links  = getattr(config, "INTER_RING_LINKS", True),
-    )
 
-    outdir = config.ensure_results_dir()
-    print(f"[info] Saving all CSVs to: {outdir}")
-
-    # ---------------- TASK ----------------
+def _run_task_section(topo, outdir: str):
     task_dfs = []
     for i, prof in enumerate(config.TASK_PROFILES_FOR_TASK):
         dfp = simulate_task(
@@ -61,7 +65,6 @@ def main():
         print(f"{col}:")
         print(agg_stats(task_df_all, col).to_string(index=False))
 
-    # New metrics
     if "selection_time_ms" in task_df_all.columns:
         print("Selector runtime (ms):")
         print(agg_stats(task_df_all, "selection_time_ms").to_string(index=False))
@@ -79,9 +82,6 @@ def main():
     if "selection_time_ms" in task_df_all.columns:
         print("Selector runtime (ms) by profile:")
         print(agg_stats_by_profile(task_df_all, "selection_time_ms").to_string(index=False))
-    #if "ssp_calls" in task_df_all.columns:
-    #    print("SSSP calls by profile:")
-    #    print(agg_stats_by_profile(task_df_all, "ssp_calls").to_string(index=False))
 
     print("Accuracy (%) by profile:")
     print(accuracy_stats_by_profile(task_df_all).to_string(index=False))
@@ -96,7 +96,6 @@ def main():
                     .to_frame()
                     .join(g.median().rename("p50_" + col))
                     .join(g.quantile(0.95).rename("p95_" + col)))
-
         print("TASK SLO excess (ms) across strategies:")
         print(_agg_excess(task_df_all, "slo_excess_ms").to_string())
         print("TASK SLO excess (%) across strategies:")
@@ -133,7 +132,6 @@ def main():
     if "ssp_calls" in task_df_all.columns:
         frames.append(_prefixed(agg_stats_by_profile(task_df_all, "ssp_calls"), keys, "ssp"))
 
-    # drop Nones and merge
     frames = [f for f in frames if f is not None]
     _task_wide = frames[0]
     for f in frames[1:]:
@@ -141,7 +139,8 @@ def main():
 
     save_csv(_task_wide, outdir, "task_summary_ALL_by_strategy_profile.csv")
 
-    # ---------------- WORKFLOW ----------------
+
+def _run_workflow_section(topo, outdir: str):
     wf_df = simulate_workflow(
         topo,
         config.NUM_RUNS_WORKFLOW,
@@ -151,27 +150,16 @@ def main():
         stage_profiles=config.TASK_PROFILES_FOR_WORKFLOW,
     )
 
+    base_cols = ["latency_ms", "payload_mb", "link_mb", "hop_count"]
+
     print(f"\n=== WORKFLOW ({config.WORKFLOW_STAGES} stages) ===")
     for col in base_cols:
         print(f"{col}:")
         print(agg_stats(wf_df, col).to_string(index=False))
 
-    # New metrics
     if "selection_time_ms" in wf_df.columns:
         print("Selector runtime (ms):")
         print(agg_stats(wf_df, "selection_time_ms").to_string(index=False))
-    #if "ssp_calls" in wf_df.columns:
-    #    print("SSSP calls (count):")
-    #    print(agg_stats(wf_df, "ssp_calls").to_string(index=False))
-
-    #print("Accuracy (%):")
-    #print(accuracy_stats(wf_df).to_string(index=False))
-
-    #runs_rate_task, stages_rate_task = slo_violation_rates_workflow_task_slo(wf_df)
-    #print("Workflow SLO violation (per-run; any stage violates) — based on SLO_MS_TASK:")
-    #print(runs_rate_task.to_string(index=False))
-    #print("Workflow SLO violation (per-stage across all runs) — based on SLO_MS_TASK:")
-    #print(stages_rate_task.to_string(index=False))
 
     # Save workflow CSVs (existing)
     save_csv(wf_df, outdir, "workflow_runs.csv")
@@ -207,14 +195,37 @@ def main():
         _wf_wide = _wf_wide.merge(f, on=keys_wf)
 
     save_csv(_wf_wide, outdir, "workflow_summary_ALL_by_strategy.csv")
-    #save_csv(runs_rate_task, outdir, "workflow_slo_violation_task_slo_runs.csv")
-    #save_csv(stages_rate_task, outdir, "workflow_slo_violation_task_slo_stages.csv")
 
-    # Optional Pareto counts
-    # for name, df in [("Task (all profiles)", task_df_all), ("Workflow", wf_df)]:
-    #     pts = np.c_[df["latency_ms"].to_numpy(), df["acc"].to_numpy()]
-    #     mask = pareto_front(pts)
-    #     print(f"\n{name}: {mask.sum()} non-dominated points out of {len(df)} total.")
+
+def main():
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--mode", choices=["task", "workflow", "both"], help="Override run mode")
+    args, _ = parser.parse_known_args()
+
+    run_mode = _resolve_run_mode(args.mode)
+
+    rng = random.Random(config.SEED)
+
+    # -------- BUILD THE GRAPH --------
+    topo = build_topology(
+        sats_per_ring     = config.SATS_PER_RING,
+        num_rings         = config.NUM_RINGS,
+        cloud_count       = config.NODE_COUNTS["cloud"],
+        edge_count        = config.NODE_COUNTS["edge"],
+        isl_neighbor_span = getattr(config, "ISL_NEIGHBOR_SPAN", 1),
+        gateways_per_ring = getattr(config, "GATEWAYS_PER_RING", 2),
+        inter_ring_links  = getattr(config, "INTER_RING_LINKS", True),
+    )
+
+    outdir = config.ensure_results_dir()
+    print(f"[info] RUN_MODE = {run_mode}")
+    print(f"[info] Saving all CSVs to: {outdir}")
+
+    if run_mode in ("task", "both"):
+        _run_task_section(topo, outdir)
+
+    if run_mode in ("workflow", "both"):
+        _run_workflow_section(topo, outdir)
 
 
 if __name__ == "__main__":

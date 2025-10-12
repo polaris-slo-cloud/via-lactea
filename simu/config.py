@@ -9,8 +9,8 @@ import os
 SEED               = 42
 
 # Simulation sizes
-NUM_RUNS_TASK      = 10
-NUM_RUNS_WORKFLOW  = 10
+NUM_RUNS_TASK      = 1
+NUM_RUNS_WORKFLOW  = 1
 WORKFLOW_STAGES    = 3
 
 # SLO knobs
@@ -19,11 +19,8 @@ SLO_MS_STAGE       = 600.0    # per-stage SLO used by SLO-first in workflows
 SLO_ACC_MIN = 89.0  # example minimum accuracy (%) required
 
 
-# Utility weights for when SLO cannot be met
-ALPHA, BETA        = 0.7, 1.5
+RUN_MODE = "workflow"   # options: "task", "workflow", "both"
 
-# Placement constraint
-REQUIRE_DISTINCT_NODES = True
 
 # Results directory
 BASE_RESULTS_DIR = "../experiments/results"
@@ -35,8 +32,8 @@ SLO_MS_TASK_PER_PROFILE = {
     "prepare-ds": 1000.0,
 }
 
-SATS_PER_RING = 100
-NUM_RINGS     = 10
+SATS_PER_RING = 10
+NUM_RINGS     = 2
 
 # Node pool sizes
 NODE_COUNTS = {
@@ -45,16 +42,6 @@ NODE_COUNTS = {
     "cloud": 10,
 }
 
-# NODE_COUNTS already provides counts for 'edge' and 'cloud'
-ISL_NEIGHBOR_SPAN = 1
-GATEWAYS_PER_RING = 2
-INTER_RING_LINKS  = True
-
-# Multi-hop scaling flags/parameters
-SCALE_HOPS    = True
-INTRA_BASE    = {"sat": 1.0, "edge": 1.0, "cloud": 1.0}
-INTRA_K       = {"sat": 0.9, "edge": 0.7, "cloud": 0.4}
-INTRA_JITTER  = 0.3  # 0 => deterministic
 
 # Runtime variability (coeff. of variation)
 CV_PREFIX = 0.15
