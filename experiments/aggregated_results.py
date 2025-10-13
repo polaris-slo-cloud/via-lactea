@@ -2,10 +2,11 @@
 """
 Aggregate experiment results across node-count folders and plot mean latency.
 
-It reads (per node-count folder, e.g. experiments/via-lactea/100):
+It reads (per node-count folder, e.g. results/100):
 - task_summary_latency_by_strategy_profile.csv
 - task_summary_hopcount_by_strategy_profile.csv
 - task_summary_link_by_strategy_profile.csv
+- task_summary_selector_time_by_strategy_profile.csv   [TASK-ONLY]
 - workflow_summary_latency_by_strategy.csv
 - workflow_summary_hopcount_by_strategy.csv
 - workflow_summary_link_by_strategy.csv
@@ -14,6 +15,7 @@ Outputs (to OUTPUT_DIR):
 - aggregated_latency.csv
 - aggregated_hopcount.csv
 - aggregated_link_mb.csv
+- aggregated_selector_ms.csv                            [TASK-ONLY]
 - aggregated_merged.csv
 - latency_nodes_<strategy>.png    (one plot per strategy; lines = profiles incl. 'workflow')
 """
@@ -23,13 +25,12 @@ import re
 import argparse
 from typing import List, Optional
 import pandas as pd
-import matplotlib.pyplot as plt
 
 # -------------------------
 # Defaults (override via CLI)
 # -------------------------
-BASE_DIR_DEFAULT = os.path.expanduser("~/workspace/via-lactea/experiments/via-lactea")
-OUTPUT_DIR_DEFAULT = os.path.expanduser("~/workspace/via-lactea/experiments/_plots")
+BASE_DIR_DEFAULT = os.path.expanduser("results/")
+OUTPUT_DIR_DEFAULT = os.path.expanduser("_plots")
 
 # If None, include ALL strategies found in the CSVs.
 STRATEGIES_DEFAULT: Optional[List[str]] = None
@@ -38,12 +39,14 @@ TASK_FILES = {
     "latency":   "task_summary_latency_by_strategy_profile.csv",
     "hopcount":  "task_summary_hopcount_by_strategy_profile.csv",
     "link":      "task_summary_link_by_strategy_profile.csv",
+    "selector":  "task_summary_selector_time_by_strategy_profile.csv",
 }
 
 WF_FILES = {
     "latency":   "workflow_summary_latency_by_strategy.csv",
     "hopcount":  "workflow_summary_hopcount_by_strategy.csv",
     "link":      "workflow_summary_link_by_strategy.csv",
+    # NOTE: no workflow-level selector file
 }
 
 # -------------------------
@@ -93,7 +96,8 @@ def read_workflow_metric(dirpath: str, filename: str, nodes: int, strategies: Op
 
 def build_metric_across_nodes(base_dir: str, metric_key: str, strategies: Optional[List[str]]) -> pd.DataFrame:
     """
-    metric_key in {"latency","hopcount","link"}
+    Builds a metric across nodes for both task-level and (if available) workflow-level.
+    metric_key in {"latency","hopcount","link","selector"}
     Returns DataFrame with columns: nodes, profile, strategy, mean
     """
     rows = []
@@ -102,10 +106,16 @@ def build_metric_across_nodes(base_dir: str, metric_key: str, strategies: Option
             continue
         nodes = int(name)
         dirpath = os.path.join(base_dir, name)
-        # task metric
-        rows.append(read_task_metric(dirpath, TASK_FILES[metric_key], nodes, strategies))
-        # workflow metric
-        rows.append(read_workflow_metric(dirpath, WF_FILES[metric_key], nodes, strategies))
+
+        # Task metric (always try)
+        task_file = TASK_FILES.get(metric_key)
+        if task_file:
+            rows.append(read_task_metric(dirpath, task_file, nodes, strategies))
+
+        # Workflow metric (only if defined for this metric)
+        wf_file = WF_FILES.get(metric_key)
+        if wf_file:
+            rows.append(read_workflow_metric(dirpath, wf_file, nodes, strategies))
 
     if not rows:
         return pd.DataFrame(columns=["nodes","profile","strategy","mean"])
@@ -115,37 +125,6 @@ def build_metric_across_nodes(base_dir: str, metric_key: str, strategies: Option
     out = out.dropna(subset=["nodes", "mean"])
     out = out.sort_values(["profile","strategy","nodes"]).reset_index(drop=True)
     return out
-
-def plot_latency(df_lat: pd.DataFrame, outdir: str, strategy_list: Optional[List[str]]):
-    """
-    For each strategy, create a line plot:
-      x = nodes, y = mean (latency_ms)
-      separate line per profile (including 'workflow')
-    If strategy_list is None, plot ALL strategies present.
-    """
-    os.makedirs(outdir, exist_ok=True)
-    if strategy_list is None:
-        strategy_list = sorted(df_lat["strategy"].unique())
-    for strat in strategy_list:
-        d = df_lat[df_lat["strategy"] == strat]
-        if d.empty:
-            continue
-        plt.figure(figsize=(9, 5))
-        # Sort so 'workflow' appears last in legend ordering tweakable by key
-        for profile in sorted(d["profile"].unique(), key=lambda p: (p!="workflow", p)):
-            sub = d[d["profile"] == profile].sort_values("nodes")
-            if sub.empty:
-                continue
-            plt.plot(sub["nodes"], sub["mean"], marker="o", label=profile)
-        plt.xlabel("Nodes")
-        plt.ylabel("Mean latency (ms)")
-        plt.title(f"Mean Latency vs Nodes — Strategy: {strat}")
-        plt.grid(True, linewidth=0.3)
-        plt.legend(title="Profile", ncol=2)
-        outpath = os.path.join(outdir, f"latency_nodes_{strat.replace(' ','_')}.png")
-        plt.tight_layout()
-        plt.savefig(outpath, dpi=150)
-        plt.close()
 
 def save_csv(df: pd.DataFrame, outdir: str, filename: str) -> str:
     os.makedirs(outdir, exist_ok=True)
@@ -176,22 +155,25 @@ def main():
     print(f"[info] Strategies: {'ALL' if strategies is None else strategies}")
 
     # Build metric dataframes (possibly unfiltered if strategies is None)
-    lat_df = build_metric_across_nodes(base_dir, "latency", strategies)
-    hop_df = build_metric_across_nodes(base_dir, "hopcount", strategies)
-    lnk_df = build_metric_across_nodes(base_dir, "link", strategies)
+    lat_df      = build_metric_across_nodes(base_dir, "latency", strategies)
+    hop_df      = build_metric_across_nodes(base_dir, "hopcount", strategies)
+    lnk_df      = build_metric_across_nodes(base_dir, "link", strategies)
+    selector_df = build_metric_across_nodes(base_dir, "selector", strategies)  # task-only
 
-    if lat_df.empty and hop_df.empty and lnk_df.empty:
+    if lat_df.empty and hop_df.empty and lnk_df.empty and selector_df.empty:
         print("[warn] No data found. Check paths and files.")
         return
 
     # Save individual metric CSVs
-    lat_path = save_csv(lat_df, out_dir, "aggregated_latency.csv")
-    hop_path = save_csv(hop_df, out_dir, "aggregated_hopcount.csv")
-    lnk_path = save_csv(lnk_df, out_dir, "aggregated_link_mb.csv")
+    lat_path   = save_csv(lat_df, out_dir, "aggregated_latency.csv")
+    hop_path   = save_csv(hop_df, out_dir, "aggregated_hopcount.csv")
+    lnk_path   = save_csv(lnk_df, out_dir, "aggregated_link_mb.csv")
+    sel_path   = save_csv(selector_df, out_dir, "aggregated_selector_ms.csv")
 
     print(f"[ok] Wrote: {lat_path}")
     print(f"[ok] Wrote: {hop_path}")
     print(f"[ok] Wrote: {lnk_path}")
+    print(f"[ok] Wrote: {sel_path}")
 
     # Merge (left join on nodes+profile+strategy; latency as base)
     merged = lat_df.rename(columns={"mean": "mean_latency_ms"})
@@ -201,15 +183,12 @@ def main():
     if not lnk_df.empty:
         merged = merged.merge(lnk_df.rename(columns={"mean":"mean_link_mb"}),
                               on=["nodes","profile","strategy"], how="left")
+    if not selector_df.empty:
+        merged = merged.merge(selector_df.rename(columns={"mean":"mean_selector_ms"}),
+                              on=["nodes","profile","strategy"], how="left")
 
     merged_path = save_csv(merged, out_dir, "aggregated_merged.csv")
     print(f"[ok] Wrote: {merged_path}")
-
-    # Plots (one per strategy, lines per profile incl. workflow)
-    if not lat_df.empty:
-        # If strategies None, plot all present
-        plot_latency(lat_df, out_dir, strategies)
-        print("[ok] Latency plots saved.")
 
 if __name__ == "__main__":
     main()

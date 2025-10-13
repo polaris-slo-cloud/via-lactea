@@ -3,8 +3,9 @@ Simulation entry points: single-task and multi-stage workflow (graph-based).
 """
 
 import math
+import os
 import random
-from typing import List, Dict, Tuple, Optional, Callable
+from typing import List, Dict, Tuple, Optional, Callable, Iterable
 
 import pandas as pd
 
@@ -83,6 +84,7 @@ def _build_run_placement(
 # Strategy registry (names → callable or sentinel for RR)
 _Strategy = Tuple[str, Optional[Callable[..., Dict]]]
 
+# Canonical order (used for output ordering too)
 STRATEGIES: List[_Strategy] = [
     ("SLO-first", lambda pl, t, r, prof, slo: choose_stitch_for_task(
         placement=pl, topo=t, rng=r, task_profile_name=prof,
@@ -93,6 +95,103 @@ STRATEGIES: List[_Strategy] = [
     ("Random",         random_pick_stitch),
     ("Round-Robin",    None),  # handled specially
 ]
+
+# Name → impl for fast lookup
+_STRATEGY_MAP: Dict[str, Optional[Callable[..., Dict]]] = {k: v for k, v in STRATEGIES}
+
+
+def _parse_enabled_list(raw: Optional[Iterable[str]]) -> List[str]:
+    if raw is None:
+        return []
+    out: List[str] = []
+    for item in raw:
+        if item is None:
+            continue
+        name = str(item).strip()
+        if not name:
+            continue
+        out.append(name)
+    return out
+
+
+def _resolve_enabled_strategies(explicit: Optional[Iterable[str]] = None) -> List[_Strategy]:
+    """
+    Priority:
+      1) explicit (function arg `enabled_strategies`)
+      2) env var VL_BASELINES (comma or pipe separated)
+      3) config.ENABLED_BASELINES (list or 'all')
+      4) default: all strategies
+    Returns list preserving canonical STRATEGIES order.
+    """
+    # 1) function arg
+    if explicit is not None:
+        names = _parse_enabled_list(explicit)
+        # allow "all"
+        if len(names) == 1 and names[0].lower() == "all":
+            names = [name for name, _ in STRATEGIES]
+    else:
+        # 2) env var
+        env_val = os.getenv("VL_BASELINES", "").strip()
+        if env_val:
+            # split by comma or pipe
+            parts = [p.strip() for chunk in env_val.split("|") for p in chunk.split(",")]
+            names = _parse_enabled_list(parts)
+            if len(names) == 1 and names[0].lower() == "all":
+                names = [name for name, _ in STRATEGIES]
+        else:
+            # 3) config
+            cfg_val = getattr(config, "ENABLED_BASELINES", "all")
+            if isinstance(cfg_val, str):
+                if cfg_val.strip().lower() == "all" or not cfg_val.strip():
+                    names = [name for name, _ in STRATEGIES]
+                else:
+                    parts = [p.strip() for chunk in cfg_val.split("|") for p in chunk.split(",")]
+                    names = _parse_enabled_list(parts)
+            elif isinstance(cfg_val, (list, tuple, set)):
+                names = _parse_enabled_list(cfg_val)
+                if not names:
+                    names = [name for name, _ in STRATEGIES]
+            else:
+                names = [name for name, _ in STRATEGIES]
+
+    # Filter to valid and preserve canonical order
+    valid = set(_STRATEGY_MAP.keys())
+    selected = [name for name, _ in STRATEGIES if name in names and name in valid]
+
+    # Warn about unknowns (print once)
+    unknown = [n for n in names if n not in valid]
+    if unknown:
+        print(f"[warn] Unknown baseline(s) ignored: {', '.join(unknown)}")
+
+    # Fallback to all if user filtered out everything
+    if not selected:
+        selected = [name for name, _ in STRATEGIES]
+
+    return [(name, _STRATEGY_MAP[name]) for name in selected]
+
+
+def _normalize_metrics_for_csv(out: Dict) -> Dict:
+    """
+    Ensure all rows contain the same keys so CSVs are tidy.
+    Strategies that don't populate the new cached fields will get zeros.
+    """
+    # numeric defaults
+    out.setdefault("payload_mb", 0.0)
+    out.setdefault("link_mb", 0.0)
+    out.setdefault("payload_mb_cached", 0.0)
+    out.setdefault("link_mb_cached", 0.0)
+    out.setdefault("selection_time_ms", 0.0)
+    out.setdefault("ssp_calls", 0)
+    out.setdefault("hop_count", 0)
+    out.setdefault("acc", float("nan"))
+    out.setdefault("latency_ms", float("inf"))
+    out.setdefault("net_latency_ms", float("inf"))
+    # SLO fields may be overwritten by caller; make sure they exist
+    out.setdefault("met_slo", False)
+    out.setdefault("slo_ms", None)
+    out.setdefault("slo_excess_ms", 0.0)
+    out.setdefault("slo_excess_pct", float("nan"))
+    return out
 
 
 def _eval_strategy_once(
@@ -124,6 +223,8 @@ def _eval_strategy_once(
         res = _reject_row()
 
     out = dict(res)  # copy before annotating
+    out = _normalize_metrics_for_csv(out)
+
     total = float(out.get("latency_ms", math.inf))
     met, exc_ms, exc_pct = _slo_fields(total, slo_ms)
     out["met_slo"] = met
@@ -143,15 +244,23 @@ def simulate_task(
     slo_ms: float,
     seed: int,
     task_profile_name: str,
+    csv_path: Optional[str] = None,
+    enabled_strategies: Optional[Iterable[str]] = None,
 ) -> pd.DataFrame:
     """
     For a fixed profile, run multiple independent placements and evaluate
     the strategies; return a long DataFrame of per-run results.
+
+    If csv_path is provided, results are also written to that CSV.
+    Limit which baselines run via:
+      • enabled_strategies=["SLO-first","Round-Robin"]
+      • or env VL_BASELINES, or config.ENABLED_BASELINES
     """
     base_rng = random.Random(seed)
     records: List[Dict] = []
 
     all_modules = _all_modules()
+    active_strategies = _resolve_enabled_strategies(enabled_strategies)
 
     for run in range(num_runs):
         rng = random.Random(base_rng.getrandbits(64))
@@ -159,7 +268,7 @@ def simulate_task(
         # one placement per run (shared across strategies)
         placement = _build_run_placement(topo, all_modules, rng, run_idx=run)
 
-        for name, picker in STRATEGIES:
+        for name, picker in active_strategies:
             rr_idx = run  # RR index policy: one step per run
             mets = _eval_strategy_once(
                 name, picker, placement, topo, rng, task_profile_name,
@@ -167,7 +276,12 @@ def simulate_task(
             )
             records.append({"run": run, "strategy": name, "profile": task_profile_name, **mets})
 
-    return pd.DataFrame(records)
+    df = pd.DataFrame(records)
+
+    if csv_path:
+        df.to_csv(csv_path, index=False)
+
+    return df
 
 
 # ---------------------------
@@ -181,24 +295,28 @@ def simulate_workflow(
     slo_ms_stage: float,
     seed: int,
     stage_profiles: List[str],
+    csv_path: Optional[str] = None,
+    enabled_strategies: Optional[Iterable[str]] = None,
 ) -> pd.DataFrame:
     """
     Simulate a K-stage workflow. For each stage, create a fresh placement and
     apply each selection strategy; accumulate totals over stages.
 
     We aggregate:
-      - latency_ms:            sum over stages
-      - payload_mb / link_mb:  sum over stages
-      - hop_count:             sum over stages
-      - selection_time_ms:     sum over stages (to reflect total selector runtime)
-      - ssp_calls:             sum over stages
-      - met_slo:               True only if *all* stages met the (E2E) stage SLO
+      - latency_ms:                sum over stages
+      - payload_mb / link_mb:      sum over stages
+      - payload_mb_cached / link_mb_cached: sum over stages
+      - hop_count:                 sum over stages
+      - selection_time_ms:         sum over stages (reflect total selector runtime)
+      - ssp_calls:                 sum over stages
+      - met_slo:                   True only if *all* stages met the (E2E) stage SLO
     """
     assert len(stage_profiles) == stages
     base_rng = random.Random(seed)
     records: List[Dict] = []
 
     all_modules = _all_modules()
+    active_strategies = _resolve_enabled_strategies(enabled_strategies)
 
     for run in range(num_runs):
         rng = random.Random(base_rng.getrandbits(64))
@@ -211,8 +329,12 @@ def simulate_workflow(
             stage_placements.append(placement)
 
         # Evaluate each strategy across stages, aggregating totals
-        for name, picker in STRATEGIES:
-            lat_sum = payload_sum = link_sum = 0.0
+        for name, picker in active_strategies:
+            lat_sum = 0.0
+            payload_sum = 0.0
+            link_sum = 0.0
+            payload_cached_sum = 0.0
+            link_cached_sum = 0.0
             hops_sum = 0
             sel_time_sum = 0.0
             ssp_calls_sum = 0
@@ -231,11 +353,13 @@ def simulate_workflow(
                 )
 
                 latency_ms = mets.get("latency_ms", math.inf)
-                lat_sum     += latency_ms
-                payload_sum += mets.get("payload_mb", 0.0)
-                link_sum    += mets.get("link_mb", 0.0)
-                hops_sum    += int(mets.get("hop_count", 0))
-                acc_last     = mets.get("acc", acc_last)
+                lat_sum            += latency_ms
+                payload_sum        += float(mets.get("payload_mb", 0.0))
+                link_sum           += float(mets.get("link_mb", 0.0))
+                payload_cached_sum += float(mets.get("payload_mb_cached", 0.0))
+                link_cached_sum    += float(mets.get("link_mb_cached", 0.0))
+                hops_sum           += int(mets.get("hop_count", 0))
+                acc_last            = mets.get("acc", acc_last)
 
                 # accumulate selector instrumentation if present
                 sel_time_sum += float(mets.get("selection_time_ms", 0.0))
@@ -253,6 +377,8 @@ def simulate_workflow(
                 "acc": (0.0 if acc_last is None else acc_last),
                 "payload_mb": payload_sum,
                 "link_mb": link_sum,
+                "payload_mb_cached": payload_cached_sum,
+                "link_mb_cached": link_cached_sum,
                 "hop_count": hops_sum,
                 "selection_time_ms": sel_time_sum,
                 "ssp_calls": ssp_calls_sum,
@@ -264,4 +390,9 @@ def simulate_workflow(
                 "profiles": "|".join(stage_profiles),
             })
 
-    return pd.DataFrame(records)
+    df = pd.DataFrame(records)
+
+    if csv_path:
+        df.to_csv(csv_path, index=False)
+
+    return df

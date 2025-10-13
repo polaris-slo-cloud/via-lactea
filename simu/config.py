@@ -9,7 +9,7 @@ import os
 SEED               = 42
 
 # Simulation sizes
-NUM_RUNS_TASK      = 1
+NUM_RUNS_TASK      = 10
 NUM_RUNS_WORKFLOW  = 1
 WORKFLOW_STAGES    = 3
 
@@ -39,8 +39,25 @@ NUM_RINGS     = 2
 NODE_COUNTS = {
     "sat":   SATS_PER_RING * NUM_RINGS,
     "edge":  20,
-    "cloud": 10,
+    "cloud": 1,
 }
+
+# caching policy
+CACHE_FIRST_RUN = False          # steady-state (allow cache hits)
+CACHEABLE_LAYER_PATTERNS = [
+    "swin_stage1_*",
+    "resnet_layer1*",
+    # add the REAL module names you want considered cacheable
+]
+CACHE_DEBUG = False
+
+# Which baselines (strategies) to run by default.
+# Accepted values:
+#   "all"                             -> run everything
+#   "SLO-first"                       -> run only SLO-first
+#   "SLO-first,Round-Robin"           -> comma/pipe separated names
+#   ["SLO-first", "Round-Robin"]      -> list is also fine
+ENABLED_BASELINES = "SLO-first"
 
 
 # Runtime variability (coeff. of variation)

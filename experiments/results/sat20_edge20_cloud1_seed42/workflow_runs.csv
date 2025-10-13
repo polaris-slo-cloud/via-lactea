@@ -1,0 +1,2 @@
+run,strategy,latency_ms,acc,payload_mb,link_mb,payload_mb_cached,link_mb_cached,hop_count,selection_time_ms,ssp_calls,met_slo,stages_met,met_task_slo_all,stages_met_task_slo,stages,profiles
+0,SLO-first,1150.0,89.01,3.59326171875,5.8212890625,2.44482421875,3.9072265625,36,32.15762399999994,503,True,3,True,3,3,extract-frames|object-det|prepare-ds

@@ -1,0 +1,4 @@
+profile,strategy,acc_mean
+extract-frames,SLO-first,89.44800000000001
+object-det,SLO-first,89.01
+prepare-ds,SLO-first,89.01

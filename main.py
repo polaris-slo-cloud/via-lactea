@@ -4,6 +4,7 @@ now also reporting selector runtime (selection_time_ms) and SSSP call counts (ss
 
 New:
 - RUN MODE switch via config.RUN_MODE / VL_RUN_MODE / --mode {task,workflow,both}
+- Prints & saves cached metrics: payload_mb_cached, link_mb_cached
 """
 
 import os
@@ -59,11 +60,17 @@ def _run_task_section(topo, outdir: str):
     task_df_all = pd.concat(task_dfs, ignore_index=True)
 
     base_cols = ["latency_ms", "payload_mb", "link_mb", "hop_count"]
+    cached_cols = ["payload_mb_cached", "link_mb_cached"]
 
     print("\n=== TASK (single-stage) — aggregated across profiles ===")
     for col in base_cols:
         print(f"{col}:")
         print(agg_stats(task_df_all, col).to_string(index=False))
+    # cached
+    for col in cached_cols:
+        if col in task_df_all.columns:
+            print(f"{col}:")
+            print(agg_stats(task_df_all, col).to_string(index=False))
 
     if "selection_time_ms" in task_df_all.columns:
         print("Selector runtime (ms):")
@@ -78,6 +85,11 @@ def _run_task_section(topo, outdir: str):
     for col in base_cols:
         print(f"{col} by profile:")
         print(agg_stats_by_profile(task_df_all, col).to_string(index=False))
+    # cached by profile
+    for col in cached_cols:
+        if col in task_df_all.columns:
+            print(f"{col} by profile:")
+            print(agg_stats_by_profile(task_df_all, col).to_string(index=False))
 
     if "selection_time_ms" in task_df_all.columns:
         print("Selector runtime (ms) by profile:")
@@ -112,7 +124,13 @@ def _run_task_section(topo, outdir: str):
     save_csv(accuracy_stats_by_profile(task_df_all), outdir, "task_accuracy_by_strategy_profile.csv")
     save_csv(slo_violation_rates_task_by_profile(task_df_all), outdir, "task_slo_violation_by_profile.csv")
 
-    # Save new task CSVs
+    # Save new cached task CSVs
+    if "payload_mb_cached" in task_df_all.columns:
+        save_csv(agg_stats_by_profile(task_df_all, "payload_mb_cached"), outdir, "task_summary_payload_cached_by_strategy_profile.csv")
+    if "link_mb_cached" in task_df_all.columns:
+        save_csv(agg_stats_by_profile(task_df_all, "link_mb_cached"), outdir, "task_summary_link_cached_by_strategy_profile.csv")
+
+    # Save new selector CSVs
     if "selection_time_ms" in task_df_all.columns:
         save_csv(agg_stats_by_profile(task_df_all, "selection_time_ms"), outdir, "task_summary_selector_time_by_strategy_profile.csv")
     if "ssp_calls" in task_df_all.columns:
@@ -127,6 +145,12 @@ def _run_task_section(topo, outdir: str):
         _prefixed(agg_stats_by_profile(task_df_all, "link_mb"),    keys, "link"),
         _prefixed(agg_stats_by_profile(task_df_all, "hop_count"),  keys, "hops"),
     ]
+    # add cached
+    if "payload_mb_cached" in task_df_all.columns:
+        frames.append(_prefixed(agg_stats_by_profile(task_df_all, "payload_mb_cached"), keys, "payload_cached"))
+    if "link_mb_cached" in task_df_all.columns:
+        frames.append(_prefixed(agg_stats_by_profile(task_df_all, "link_mb_cached"), keys, "link_cached"))
+
     if "selection_time_ms" in task_df_all.columns:
         frames.append(_prefixed(agg_stats_by_profile(task_df_all, "selection_time_ms"), keys, "selector"))
     if "ssp_calls" in task_df_all.columns:
@@ -151,11 +175,17 @@ def _run_workflow_section(topo, outdir: str):
     )
 
     base_cols = ["latency_ms", "payload_mb", "link_mb", "hop_count"]
+    cached_cols = ["payload_mb_cached", "link_mb_cached"]
 
     print(f"\n=== WORKFLOW ({config.WORKFLOW_STAGES} stages) ===")
     for col in base_cols:
         print(f"{col}:")
         print(agg_stats(wf_df, col).to_string(index=False))
+    # cached
+    for col in cached_cols:
+        if col in wf_df.columns:
+            print(f"{col}:")
+            print(agg_stats(wf_df, col).to_string(index=False))
 
     if "selection_time_ms" in wf_df.columns:
         print("Selector runtime (ms):")
@@ -169,7 +199,13 @@ def _run_workflow_section(topo, outdir: str):
     save_csv(agg_stats(wf_df, "hop_count"),  outdir, "workflow_summary_hopcount_by_strategy.csv")
     save_csv(accuracy_stats(wf_df), outdir, "workflow_accuracy_by_strategy.csv")
 
-    # Save new workflow CSVs
+    # Save new cached workflow CSVs
+    if "payload_mb_cached" in wf_df.columns:
+        save_csv(agg_stats(wf_df, "payload_mb_cached"), outdir, "workflow_summary_payload_cached_by_strategy.csv")
+    if "link_mb_cached" in wf_df.columns:
+        save_csv(agg_stats(wf_df, "link_mb_cached"), outdir, "workflow_summary_link_cached_by_strategy.csv")
+
+    # Save new selector CSVs
     if "selection_time_ms" in wf_df.columns:
         save_csv(agg_stats(wf_df, "selection_time_ms"), outdir, "workflow_summary_selector_time_by_strategy.csv")
     if "ssp_calls" in wf_df.columns:
@@ -184,6 +220,12 @@ def _run_workflow_section(topo, outdir: str):
         _prefixed(agg_stats(wf_df, "link_mb"),    keys_wf, "link"),
         _prefixed(agg_stats(wf_df, "hop_count"),  keys_wf, "hops"),
     ]
+    # add cached
+    if "payload_mb_cached" in wf_df.columns:
+        frames_wf.append(_prefixed(agg_stats(wf_df, "payload_mb_cached"), keys_wf, "payload_cached"))
+    if "link_mb_cached" in wf_df.columns:
+        frames_wf.append(_prefixed(agg_stats(wf_df, "link_mb_cached"), keys_wf, "link_cached"))
+
     if "selection_time_ms" in wf_df.columns:
         frames_wf.append(_prefixed(agg_stats(wf_df, "selection_time_ms"), keys_wf, "selector"))
     if "ssp_calls" in wf_df.columns:
