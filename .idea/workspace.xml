@@ -6,19 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="4d95d857-c60d-465e-8cfc-663a3b2d0ac4" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_accuracy_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_accuracy_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_runs.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_runs.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_runs_stitches.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_runs_stitches.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_ALL_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_ALL_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_hopcount_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_latency_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_latency_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_link_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_link_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_link_cached_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_link_cached_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_payload_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_payload_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_payload_cached_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_payload_cached_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_selector_time_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_selector_time_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_ssp_calls_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_ssp_calls_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/simulation/profiles.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation/profiles.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -222,7 +209,7 @@
       <workItem from="1760467847164" duration="683000" />
       <workItem from="1764186023238" duration="3697000" />
       <workItem from="1764228045917" duration="14180000" />
-      <workItem from="1764339626385" duration="11337000" />
+      <workItem from="1764339626385" duration="13574000" />
     </task>
     <servers />
   </component>
