@@ -17,16 +17,33 @@ from . import config
 
 def agg_stats(df: pd.DataFrame, col: str) -> pd.DataFrame:
     """Mean/median/p95/p99 grouped by strategy."""
+
+    def p95(s: pd.Series):
+        s = pd.to_numeric(s, errors="coerce")
+        s = s.replace([np.inf, -np.inf], np.nan).dropna()
+        if s.empty:
+            return np.nan
+        return np.percentile(s.to_numpy(), 95)
+
+    def p99(s: pd.Series):
+        s = pd.to_numeric(s, errors="coerce")
+        s = s.replace([np.inf, -np.inf], np.nan).dropna()
+        if s.empty:
+            return np.nan
+        return np.percentile(s.to_numpy(), 99)
+
     return (
         df.groupby("strategy")[col]
           .agg(
               mean="mean",
               median="median",
-              p95=lambda s: np.percentile(s.dropna(), 95) if len(s.dropna()) else np.nan,
-              p99=lambda s: np.percentile(s.dropna(), 99) if len(s.dropna()) else np.nan,
+              p95=p95,
+              p99=p99,
           )
           .reset_index()
     )
+
+
 
 
 def agg_stats_by_profile(df: pd.DataFrame, col: str) -> pd.DataFrame:

@@ -10,7 +10,7 @@ SEED               = 42
 
 # Simulation sizes
 NUM_RUNS_TASK      = 10
-NUM_RUNS_WORKFLOW  = 1
+NUM_RUNS_WORKFLOW  = 2
 WORKFLOW_STAGES    = 3
 
 # SLO knobs
@@ -23,7 +23,7 @@ RUN_MODE = "workflow"   # options: "task", "workflow", "both"
 
 
 # Results directory
-BASE_RESULTS_DIR = "../experiments/results"
+BASE_RESULTS_DIR = "experiments/results"
 RESULT_DIR = None  # or set to a fixed dir string
 
 SLO_MS_TASK_PER_PROFILE = {
