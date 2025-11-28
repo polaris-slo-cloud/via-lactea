@@ -59,30 +59,38 @@ MODULE_LIST_SWIN: List[str] = [
 
 PREFIX_LAYER1 = ["resnet_stem", "resnet_layer1"]
 PREFIX_LAYER2 = ["resnet_stem", "resnet_layer1", "resnet_layer2"]
-
+#  FloodNet
+#  1 |      768 | acc@1 = 79.33%
+#  2 |      768 | acc@1 = 85.11%
+#  3 |      768 | acc@1 = 81.56%
+#  4 |      768 | acc@1 = 86.00%
+#  5 |      768 | acc@1 = 91.78%
+#  6 |      768 | acc@1 = 91.11%
+#  7 |      768 | acc@1 = 90.00%
+#
 CANDIDATE_STITCHES: Dict[int, Dict] = {
-    1: {"acc": 90.47, "modules": MODULE_LIST_SWIN},
+    1: {"acc": 79.33, "modules": MODULE_LIST_SWIN},
 
     # Layer-1 prefix (C2)
-    2: {"acc": 89.99, "modules": PREFIX_LAYER1 + [
+    2: {"acc": 85.11, "modules": PREFIX_LAYER1 + [
         "swin_stage1_b0","swin_stage1_b1","swin_stage2_b0","swin_stage2_b1",
         "swin_stage3","swin_stage4","swin_tail_extras","head"
     ]},
-    3: {"acc": 89.01, "modules": PREFIX_LAYER1 + [
+    3: {"acc": 81.56, "modules": PREFIX_LAYER1 + [
         "swin_stage2_b0","swin_stage2_b1","swin_stage3","swin_stage4","swin_tail_extras","head"
     ]},
-    4: {"acc": 88.07, "modules": PREFIX_LAYER1 + [
+    4: {"acc": 86.00, "modules": PREFIX_LAYER1 + [
         "swin_stage2_b1","swin_stage3","swin_stage4","swin_tail_extras","head"
     ]},
 
     # Layer-2 prefix (C3)
-    5: {"acc": 86.76, "modules": PREFIX_LAYER2 + [
+    5: {"acc": 91.78, "modules": PREFIX_LAYER2 + [
         "swin_stage2_b0","swin_stage2_b1","swin_stage3","swin_stage4","swin_tail_extras","head"
     ]},
-    6: {"acc": 84.74, "modules": PREFIX_LAYER2 + [
+    6: {"acc": 91.11, "modules": PREFIX_LAYER2 + [
         "swin_stage2_b1","swin_stage3","swin_stage4","swin_tail_extras","head"
     ]},
-    7: {"acc": 82.24, "modules": PREFIX_LAYER2 + [
+    7: {"acc": 90.00, "modules": PREFIX_LAYER2 + [
         "swin_stage2_b1","swin_stage3","swin_stage4","swin_tail_extras","head"
     ]},
 }
