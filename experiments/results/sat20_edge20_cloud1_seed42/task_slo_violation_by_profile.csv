@@ -1,4 +1,0 @@
-profile,strategy,slo_violation_pct_task_slo
-extract-frames,SLO-first,0.0
-object-det,SLO-first,0.0
-prepare-ds,SLO-first,0.0

@@ -1,0 +1,6 @@
+run,stitch_id,strategy,latency_ms,acc,payload_mb,link_mb,payload_mb_cached,link_mb_cached,hop_count,selection_time_ms,ssp_calls,met_slo,stages_met,met_task_slo_all,stages_met_task_slo,stages,profiles
+0,3,SLO-first,1900.0,89.01,3.59326171875,8.62060546875,2.44482421875,4.40966796875,48,4886.591958,21792,False,1,False,1,3,extract-frames|object-det|prepare-ds
+0,1,Best-Acc,37616.68561397969,90.47,4.74169921875,151.8427734375,4.74169921875,151.8427734375,905,34.29891699999921,0,False,0,False,0,3,extract-frames|object-det|prepare-ds
+0,1,Lowest-Latency,3095.330630438577,90.47,4.21533203125,10.041015625,4.21533203125,10.041015625,70,10789.839249,0,False,0,False,0,3,extract-frames|object-det|prepare-ds
+0,2,Random,inf,89.99,3.5439453125,151.35546875,3.5439453125,151.35546875,679,38.35383400000225,0,False,0,False,0,3,extract-frames|object-det|prepare-ds
+0,3,Round-Robin,38791.386581941304,89.01,4.55029296875,190.23681640625,4.55029296875,190.23681640625,928,37.014000999995744,0,False,0,False,0,3,extract-frames|object-det|prepare-ds

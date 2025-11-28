@@ -1,0 +1,6 @@
+run,strategy,stitch_id
+0,Best-Acc,1
+0,Lowest-Latency,1
+0,Random,2
+0,Round-Robin,3
+0,SLO-first,3

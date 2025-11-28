@@ -14,12 +14,12 @@ import numpy as np
 import pandas as pd
 from typing import Optional  # 3.9-compatible Optional
 
-from simu import config
-from simu.topology import build_topology
-from simu.simulator import simulate_task, simulate_workflow
-from simu.stats_io import (
+from simulation import config
+from simulation.topology import build_topology, build_topology_from_json
+from simulation.simulator import simulate_task, simulate_workflow
+from simulation.stats_io import (
     agg_stats, agg_stats_by_profile, accuracy_stats, accuracy_stats_by_profile,
-    slo_violation_rates_task, slo_violation_rates_task_by_profile, save_csv
+    slo_violation_rates_task, slo_violation_rates_task_by_profile, save_csv, stitch_stats
 )
 
 
@@ -193,6 +193,7 @@ def _run_workflow_section(topo, outdir: str):
 
     # Save workflow CSVs (existing)
     save_csv(wf_df, outdir, "workflow_runs.csv")
+    save_csv(stitch_stats(wf_df), outdir, "workflow_runs_stitches.csv")
     save_csv(agg_stats(wf_df, "latency_ms"), outdir, "workflow_summary_latency_by_strategy.csv")
     save_csv(agg_stats(wf_df, "payload_mb"), outdir, "workflow_summary_payload_by_strategy.csv")
     save_csv(agg_stats(wf_df, "link_mb"),    outdir, "workflow_summary_link_by_strategy.csv")
@@ -246,19 +247,17 @@ def main():
 
     run_mode = _resolve_run_mode(args.mode)
 
-    rng = random.Random(config.SEED)
-
     # -------- BUILD THE GRAPH --------
-    topo = build_topology(
-        sats_per_ring     = config.SATS_PER_RING,
-        num_rings         = config.NUM_RINGS,
-        cloud_count       = config.NODE_COUNTS["cloud"],
-        edge_count        = config.NODE_COUNTS["edge"],
-        isl_neighbor_span = getattr(config, "ISL_NEIGHBOR_SPAN", 1),
-        gateways_per_ring = getattr(config, "GATEWAYS_PER_RING", 2),
-        inter_ring_links  = getattr(config, "INTER_RING_LINKS", True),
-    )
-
+    #topo = build_topology(
+    #    sats_per_ring     = config.SATS_PER_RING,
+    #    num_rings         = config.NUM_RINGS,
+    #    cloud_count       = config.NODE_COUNTS["cloud"],
+    #    edge_count        = config.NODE_COUNTS["edge"],
+    #    isl_neighbor_span = getattr(config, "ISL_NEIGHBOR_SPAN", 1),
+    #    gateways_per_ring = getattr(config, "GATEWAYS_PER_RING", 2),
+    #    inter_ring_links  = getattr(config, "INTER_RING_LINKS", True),
+    #)
+    topo = build_topology_from_json()
     outdir = config.ensure_results_dir()
     print(f"[info] RUN_MODE = {run_mode}")
     print(f"[info] Saving all CSVs to: {outdir}")
