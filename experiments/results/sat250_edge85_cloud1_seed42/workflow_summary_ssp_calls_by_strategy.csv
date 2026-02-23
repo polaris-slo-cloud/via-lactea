@@ -1,6 +1,7 @@
 strategy,mean,median,p95,p99
 Best-Acc,0.0,0.0,0.0,0.0
+Full-model,0.0,0.0,0.0,0.0
 Lowest-Latency,0.0,0.0,0.0,0.0
 Random,0.0,0.0,0.0,0.0
 Round-Robin,0.0,0.0,0.0,0.0
-SLO-first,17964.5,17964.5,18027.05,18032.61
+SLO-first,571.0,571.0,577.3,577.86
