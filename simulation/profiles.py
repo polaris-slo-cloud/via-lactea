@@ -32,6 +32,7 @@ OUTPUT_SIZES_MB: Dict[str, float] = {
     "swin_stage1_b1":    mb(28*28*192),
     "swin_stage2_b0":    mb(14*14*384),
     "swin_stage2_b1":    mb(14*14*384),
+    "swin_stage2_b2":    mb(14*14*384),
     "swin_stage3":       mb( 7* 7*768),
     "swin_stage4":       mb( 7* 7*768),
     "swin_tail_extras":  mb(768),
@@ -103,7 +104,7 @@ CANDIDATE_STITCHES: Dict[int, Dict] = {
         "swin_stage2_b1","swin_stage3","swin_stage4","swin_tail_extras","head"
     ]},
     7: {"acc": 84.60, "modules": PREFIX_LAYER2 + [
-        "swin_stage2_b1","swin_stage3","swin_stage4","swin_tail_extras","head"
+        "swin_stage2_b2","swin_stage3","swin_stage4","swin_tail_extras","head"
     ]},
 }
 

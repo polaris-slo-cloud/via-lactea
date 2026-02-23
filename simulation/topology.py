@@ -54,7 +54,7 @@ def _link_ranges(kind: str) -> Dict[str, Tuple[float, float]]:
     lr = getattr(config, "LINK_RANGES", None)
     if not lr:
         lr = {
-            "isl":           {"bw": (1000.0, 1000.0),   "prop": (30.0, 40.0)},
+            "isl":           {"bw": (1000000.0, 1000000.0),   "prop": (30.0, 40.0)},
             "downlink":      {"bw": (300.0, 300.0),   "prop": (50.0, 60.0)},
             "edge_backhaul": {"bw": (100.0, 100.0), "prop": (25.0, 35.0)},
             "default":       {"bw": (10.0, 10.0),      "prop": (100.0, 100.0)},
@@ -65,7 +65,7 @@ def _link_ranges(kind: str) -> Dict[str, Tuple[float, float]]:
 # -------------------------
 # Builders
 # -------------------------
-def build_topology_from_json(path: str = "resources/topo_250.json") -> Topology:
+def build_topology_from_json(path: str = "/Users/kenia/workspace/via-lactea/resources/topo_250.json") -> Topology:
     """
     Build a topology from a Stardust JSON snapshot.
 

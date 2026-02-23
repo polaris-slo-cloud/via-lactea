@@ -51,6 +51,17 @@ def _nodes_for_module(placement: Dict[str, object], m: str) -> List[Node]:
         return [n for n in v["nodes"] if n is not None]
     return []
 
+def _first_reachable_dst_in_order(
+    topo: Topology,
+    src: Node,
+    dst_list: List[Node],
+) -> Optional[Node]:
+    for d in dst_list:
+        ms, _ = dijkstra_base_path_between_nodes(topo, src.nid, d.nid, float("inf"))
+        if (ms is not None) and math.isfinite(ms):
+            return d
+    return None
+
 def _first_reachable_pair(
     topo: Topology,
     src_candidates: List[Node],
@@ -154,6 +165,12 @@ def _pick_pair(
     if objective == "random2":
         s = rng.choice(src_candidates)
         d = _randomk_reachable_dst(topo, rng, s, dst_candidates, random_k)
+        return None if d is None else (s, d)
+
+    if objective == "full-model":
+        # pick the first src candidate, then the first reachable dst candidate (in given order)
+        s = src_candidates[0]
+        d = _first_reachable_dst_in_order(topo, s, dst_candidates)
         return None if d is None else (s, d)
 
     raise ValueError(f"Unknown greedy_objective: {objective}")
@@ -349,6 +366,8 @@ def e2e_metrics_for_stitch(
         seg_net_ms = 0.0
         for e in hops:
             hop_ms = _hop_latency_ms(e, payload, rng)
+            if (hop_ms is None) or (not math.isfinite(hop_ms)):
+                hop_ms = float("inf")
             seg_net_ms += hop_ms
             link_mb_total += payload  # payload counted per hop
 
@@ -369,8 +388,8 @@ def e2e_metrics_for_stitch(
     met, exc_ms, exc_pct = _slo_fields(total_latency_ms, slo_wf)
 
     return {
-        "latency_ms":     net_latency_ms,   # total = compute + net
-        "compute_ms":     net_latency_ms,
+        "latency_ms":     total_latency_ms,   # total = compute + net
+        "compute_ms":     compute_ms,
         "net_latency_ms": net_latency_ms,
         "payload_mb":     payload_mb_total,
         "link_mb":        link_mb_total,
@@ -382,3 +401,4 @@ def e2e_metrics_for_stitch(
         "slo_excess_ms":  exc_ms,
         "slo_excess_pct": exc_pct,
     }
+

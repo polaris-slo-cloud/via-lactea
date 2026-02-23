@@ -2,7 +2,7 @@
 """
 Aggregate experiment results across node-count folders and plot mean latency.
 
-It reads (per node-count folder, e.g. results/100):
+It reads (per node-count folder, e.g. results/sat1000_edge85_cloud1_seed42):
 - task_summary_latency_by_strategy_profile.csv
 - task_summary_hopcount_by_strategy_profile.csv
 - task_summary_link_by_strategy_profile.csv
@@ -17,7 +17,6 @@ Outputs (to OUTPUT_DIR):
 - aggregated_link_mb.csv
 - aggregated_selector_ms.csv                            [TASK-ONLY]
 - aggregated_merged.csv
-- latency_nodes_<strategy>.png    (one plot per strategy; lines = profiles incl. 'workflow')
 """
 
 import os
@@ -46,18 +45,30 @@ WF_FILES = {
     "latency":   "workflow_summary_latency_by_strategy.csv",
     "hopcount":  "workflow_summary_hopcount_by_strategy.csv",
     "link":      "workflow_summary_link_by_strategy.csv",
-    # NOTE: no workflow-level selector file
+    # no workflow-level selector file
 }
+
+# Pattern for directory names like:
+# sat1000_edge85_cloud1_seed42
+NODE_DIR_RE = re.compile(r"sat(\d+)_edge\d+_cloud\d+_seed\d+")
 
 # -------------------------
 # Helpers
 # -------------------------
 
-def is_node_dir(name: str) -> bool:
-    """True if folder name is an integer (e.g., '100', '1000', ...)."""
-    return bool(re.fullmatch(r"\d+", name))
+def parse_nodes_from_dir(name: str) -> Optional[int]:
+    """
+    Extract node count from directory name.
 
-def read_task_metric(dirpath: str, filename: str, nodes: int, strategies: Optional[List[str]]) -> pd.DataFrame:
+    Example: sat1000_edge85_cloud1_seed42 -> 1000
+    """
+    m = NODE_DIR_RE.fullmatch(name)
+    if not m:
+        return None
+    return int(m.group(1))
+
+def read_task_metric(dirpath: str, filename: str, nodes: int,
+                     strategies: Optional[List[str]]) -> pd.DataFrame:
     """
     Reads a task metric summary CSV with columns:
       profile,strategy,mean,median,p95,p99
@@ -65,17 +76,18 @@ def read_task_metric(dirpath: str, filename: str, nodes: int, strategies: Option
     """
     path = os.path.join(dirpath, filename)
     if not os.path.exists(path):
-        return pd.DataFrame(columns=["nodes","profile","strategy","mean"])
+        return pd.DataFrame(columns=["nodes", "profile", "strategy", "mean"])
     df = pd.read_csv(path)
-    if not {"profile","strategy","mean"}.issubset(df.columns):
-        return pd.DataFrame(columns=["nodes","profile","strategy","mean"])
+    if not {"profile", "strategy", "mean"}.issubset(df.columns):
+        return pd.DataFrame(columns=["nodes", "profile", "strategy", "mean"])
     if strategies:
         df = df[df["strategy"].isin(strategies)]
-    df = df[["profile","strategy","mean"]].copy()
+    df = df[["profile", "strategy", "mean"]].copy()
     df.insert(0, "nodes", nodes)
     return df
 
-def read_workflow_metric(dirpath: str, filename: str, nodes: int, strategies: Optional[List[str]]) -> pd.DataFrame:
+def read_workflow_metric(dirpath: str, filename: str, nodes: int,
+                         strategies: Optional[List[str]]) -> pd.DataFrame:
     """
     Reads a workflow metric summary CSV with columns:
       strategy,mean,median,p95,p99
@@ -83,28 +95,30 @@ def read_workflow_metric(dirpath: str, filename: str, nodes: int, strategies: Op
     """
     path = os.path.join(dirpath, filename)
     if not os.path.exists(path):
-        return pd.DataFrame(columns=["nodes","profile","strategy","mean"])
+        return pd.DataFrame(columns=["nodes", "profile", "strategy", "mean"])
     df = pd.read_csv(path)
-    if not {"strategy","mean"}.issubset(df.columns):
-        return pd.DataFrame(columns=["nodes","profile","strategy","mean"])
+    if not {"strategy", "mean"}.issubset(df.columns):
+        return pd.DataFrame(columns=["nodes", "profile", "strategy", "mean"])
     if strategies:
         df = df[df["strategy"].isin(strategies)]
-    df = df[["strategy","mean"]].copy()
+    df = df[["strategy", "mean"]].copy()
     df.insert(0, "profile", "workflow")
     df.insert(0, "nodes", nodes)
     return df
 
-def build_metric_across_nodes(base_dir: str, metric_key: str, strategies: Optional[List[str]]) -> pd.DataFrame:
+def build_metric_across_nodes(base_dir: str, metric_key: str,
+                              strategies: Optional[List[str]]) -> pd.DataFrame:
     """
     Builds a metric across nodes for both task-level and (if available) workflow-level.
     metric_key in {"latency","hopcount","link","selector"}
     Returns DataFrame with columns: nodes, profile, strategy, mean
     """
     rows = []
-    for name in sorted(os.listdir(base_dir), key=lambda s: (len(s), s)):
-        if not is_node_dir(name):
+    for name in sorted(os.listdir(base_dir)):
+        nodes = parse_nodes_from_dir(name)
+        if nodes is None:
             continue
-        nodes = int(name)
+
         dirpath = os.path.join(base_dir, name)
 
         # Task metric (always try)
@@ -118,12 +132,12 @@ def build_metric_across_nodes(base_dir: str, metric_key: str, strategies: Option
             rows.append(read_workflow_metric(dirpath, wf_file, nodes, strategies))
 
     if not rows:
-        return pd.DataFrame(columns=["nodes","profile","strategy","mean"])
+        return pd.DataFrame(columns=["nodes", "profile", "strategy", "mean"])
 
     out = pd.concat(rows, ignore_index=True)
     out["nodes"] = pd.to_numeric(out["nodes"], errors="coerce")
     out = out.dropna(subset=["nodes", "mean"])
-    out = out.sort_values(["profile","strategy","nodes"]).reset_index(drop=True)
+    out = out.sort_values(["profile", "strategy", "nodes"]).reset_index(drop=True)
     return out
 
 def save_csv(df: pd.DataFrame, outdir: str, filename: str) -> str:
@@ -137,13 +151,24 @@ def save_csv(df: pd.DataFrame, outdir: str, filename: str) -> str:
 # -------------------------
 
 def main():
-    ap = argparse.ArgumentParser(description="Aggregate experiment CSVs and plot latency by nodes (all baselines by default).")
-    ap.add_argument("--base-dir", default=BASE_DIR_DEFAULT,
-                    help="Root containing numeric node-count subfolders (default: %(default)s)")
-    ap.add_argument("--out-dir", default=OUTPUT_DIR_DEFAULT,
-                    help="Where to write aggregated CSVs and plots (default: %(default)s)")
-    ap.add_argument("--strategy", action="append",
-                    help="Strategy to include (can pass multiple). Omit to include ALL found strategies.")
+    ap = argparse.ArgumentParser(
+        description="Aggregate experiment CSVs and build latency and hopcount summaries across nodes."
+    )
+    ap.add_argument(
+        "--base-dir",
+        default=BASE_DIR_DEFAULT,
+        help="Root containing node-count subfolders (default: %(default)s)",
+    )
+    ap.add_argument(
+        "--out-dir",
+        default=OUTPUT_DIR_DEFAULT,
+        help="Where to write aggregated CSVs (default: %(default)s)",
+    )
+    ap.add_argument(
+        "--strategy",
+        action="append",
+        help="Strategy to include (can pass multiple). Omit to include ALL found strategies.",
+    )
     args = ap.parse_args()
 
     base_dir = args.base_dir
@@ -154,38 +179,47 @@ def main():
     print(f"[info] Output  : {out_dir}")
     print(f"[info] Strategies: {'ALL' if strategies is None else strategies}")
 
-    # Build metric dataframes (possibly unfiltered if strategies is None)
+    # Build metric dataframes
     lat_df      = build_metric_across_nodes(base_dir, "latency", strategies)
     hop_df      = build_metric_across_nodes(base_dir, "hopcount", strategies)
     lnk_df      = build_metric_across_nodes(base_dir, "link", strategies)
     selector_df = build_metric_across_nodes(base_dir, "selector", strategies)  # task-only
 
     if lat_df.empty and hop_df.empty and lnk_df.empty and selector_df.empty:
-        print("[warn] No data found. Check paths and files.")
+        print("[warn] No data found. Check paths, directory pattern, and files.")
         return
 
     # Save individual metric CSVs
-    lat_path   = save_csv(lat_df, out_dir, "aggregated_latency.csv")
-    hop_path   = save_csv(hop_df, out_dir, "aggregated_hopcount.csv")
-    lnk_path   = save_csv(lnk_df, out_dir, "aggregated_link_mb.csv")
-    sel_path   = save_csv(selector_df, out_dir, "aggregated_selector_ms.csv")
+    lat_path = save_csv(lat_df, out_dir, "aggregated_latency.csv")
+    hop_path = save_csv(hop_df, out_dir, "aggregated_hopcount.csv")
+    lnk_path = save_csv(lnk_df, out_dir, "aggregated_link_mb.csv")
+    sel_path = save_csv(selector_df, out_dir, "aggregated_selector_ms.csv")
 
     print(f"[ok] Wrote: {lat_path}")
     print(f"[ok] Wrote: {hop_path}")
     print(f"[ok] Wrote: {lnk_path}")
     print(f"[ok] Wrote: {sel_path}")
 
-    # Merge (left join on nodes+profile+strategy; latency as base)
+    # Merge (left join on nodes + profile + strategy; latency as base)
     merged = lat_df.rename(columns={"mean": "mean_latency_ms"})
     if not hop_df.empty:
-        merged = merged.merge(hop_df.rename(columns={"mean":"mean_hop_count"}),
-                              on=["nodes","profile","strategy"], how="left")
+        merged = merged.merge(
+            hop_df.rename(columns={"mean": "mean_hop_count"}),
+            on=["nodes", "profile", "strategy"],
+            how="left",
+        )
     if not lnk_df.empty:
-        merged = merged.merge(lnk_df.rename(columns={"mean":"mean_link_mb"}),
-                              on=["nodes","profile","strategy"], how="left")
+        merged = merged.merge(
+            lnk_df.rename(columns={"mean": "mean_link_mb"}),
+            on=["nodes", "profile", "strategy"],
+            how="left",
+        )
     if not selector_df.empty:
-        merged = merged.merge(selector_df.rename(columns={"mean":"mean_selector_ms"}),
-                              on=["nodes","profile","strategy"], how="left")
+        merged = merged.merge(
+            selector_df.rename(columns={"mean": "mean_selector_ms"}),
+            on=["nodes", "profile", "strategy"],
+            how="left",
+        )
 
     merged_path = save_csv(merged, out_dir, "aggregated_merged.csv")
     print(f"[ok] Wrote: {merged_path}")

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Command-line entrypoint that reproduces the original script's outputs (graph-based),
 now also reporting selector runtime (selection_time_ms) and SSSP call counts (ssp_calls).
@@ -5,21 +6,24 @@ now also reporting selector runtime (selection_time_ms) and SSSP call counts (ss
 New:
 - RUN MODE switch via config.RUN_MODE / VL_RUN_MODE / --mode {task,workflow,both}
 - Prints & saves cached metrics: payload_mb_cached, link_mb_cached
+- Also saves combined latency+accuracy SLO violation percentages per strategy
 """
 
 import os
 import random
 import argparse
+import math
 import numpy as np
 import pandas as pd
-from typing import Optional  # 3.9-compatible Optional
+from typing import Optional, Iterable, List, Dict, Tuple, Callable
 
 from simulation import config
 from simulation.topology import build_topology, build_topology_from_json
-from simulation.simulator import simulate_task, simulate_workflow
+from simulation.simulator import simulate_task, simulate_workflow, simulate_task_all_stitches
 from simulation.stats_io import (
     agg_stats, agg_stats_by_profile, accuracy_stats, accuracy_stats_by_profile,
-    slo_violation_rates_task, slo_violation_rates_task_by_profile, save_csv, stitch_stats
+    slo_violation_rates_task, slo_violation_rates_task_by_profile, save_csv, stitch_stats,
+    combined_slo_violation_by_strategy
 )
 
 
@@ -46,6 +50,34 @@ def _resolve_run_mode(cli_mode: Optional[str]) -> str:
     return mode
 
 
+# -----------------------------------------------------------------------------
+# Combined latency+accuracy SLO violation reporting (per strategy)
+# -----------------------------------------------------------------------------
+
+def _to_num(s: pd.Series) -> pd.Series:
+    x = pd.to_numeric(s, errors="coerce")
+    x = x.replace([np.inf, -np.inf], np.nan)
+    return x
+
+
+def _pctl(x: pd.Series, q: float) -> float:
+    x = _to_num(x).dropna()
+    if x.empty:
+        return float("nan")
+    return float(np.percentile(x.to_numpy(), q))
+
+
+def _hinge_pow(x: pd.Series, p: float) -> pd.Series:
+    x = _to_num(x).clip(lower=0)
+    if p == 1.0:
+        return x
+    return x.pow(p)
+
+
+# -----------------------------------------------------------------------------
+# Task / workflow sections
+# -----------------------------------------------------------------------------
+
 def _run_task_section(topo, outdir: str):
     task_dfs = []
     for i, prof in enumerate(config.TASK_PROFILES_FOR_TASK):
@@ -57,6 +89,7 @@ def _run_task_section(topo, outdir: str):
             task_profile_name=prof,
         )
         task_dfs.append(dfp)
+
     task_df_all = pd.concat(task_dfs, ignore_index=True)
 
     base_cols = ["latency_ms", "payload_mb", "link_mb", "hop_count"]
@@ -66,7 +99,7 @@ def _run_task_section(topo, outdir: str):
     for col in base_cols:
         print(f"{col}:")
         print(agg_stats(task_df_all, col).to_string(index=False))
-    # cached
+
     for col in cached_cols:
         if col in task_df_all.columns:
             print(f"{col}:")
@@ -78,14 +111,39 @@ def _run_task_section(topo, outdir: str):
 
     print("Accuracy (%):")
     print(accuracy_stats(task_df_all).to_string(index=False))
+
     print("TASK SLO violation rate (% of task requests) [based on SLO_MS_TASK]:")
     print(slo_violation_rates_task(task_df_all).to_string(index=False))
+
+    # --- NEW: combined latency+accuracy SLO violation (per strategy) ---
+    slo_l = getattr(config, "SLO_MS_TASK", None)
+    slo_a = getattr(config, "SLO_ACC_MIN", None)
+    wL = float(getattr(config, "SOFT_W_LAT", 1.0))
+    wA = float(getattr(config, "SOFT_W_ACC", 1.0))
+    pL = float(getattr(config, "SOFT_P_LAT", 2.0))
+    pA = float(getattr(config, "SOFT_P_ACC", 2.0))
+
+    comb = combined_slo_violation_by_strategy(
+        task_df_all,
+        slo_l_ms=getattr(config, "SLO_MS_TASK", None),
+        slo_a_min=getattr(config, "SLO_ACC_MIN", None),
+        wL=float(getattr(config, "SOFT_W_LAT", 1.0)),
+        wA=float(getattr(config, "SOFT_W_ACC", 1.0)),
+        pL=float(getattr(config, "SOFT_P_LAT", 2.0)),
+        pA=float(getattr(config, "SOFT_P_ACC", 2.0)),
+        include_overall=True,
+        overall_label="Overall",
+    )
+
+    print("TASK combined (lat+acc) SLO violation (% and magnitudes):")
+    print(comb.to_string(index=False))
+    save_csv(comb, outdir, "task_combined_slo_violation_by_strategy.csv")
 
     print("\n=== TASK (single-stage) — by profile ===")
     for col in base_cols:
         print(f"{col} by profile:")
         print(agg_stats_by_profile(task_df_all, col).to_string(index=False))
-    # cached by profile
+
     for col in cached_cols:
         if col in task_df_all.columns:
             print(f"{col} by profile:")
@@ -97,23 +155,9 @@ def _run_task_section(topo, outdir: str):
 
     print("Accuracy (%) by profile:")
     print(accuracy_stats_by_profile(task_df_all).to_string(index=False))
+
     print("SLO violation rate by profile (% of task requests):")
     print(slo_violation_rates_task_by_profile(task_df_all).to_string(index=False))
-
-    # New: E2E SLO excess stats (ms and %), aggregated across profiles
-    if {"slo_excess_ms", "slo_excess_pct"}.issubset(task_df_all.columns):
-        def _agg_excess(df, col):
-            g = df.groupby("strategy")[col]
-            return (g.mean().rename("mean_" + col)
-                    .to_frame()
-                    .join(g.median().rename("p50_" + col))
-                    .join(g.quantile(0.95).rename("p95_" + col)))
-        print("TASK SLO excess (ms) across strategies:")
-        print(_agg_excess(task_df_all, "slo_excess_ms").to_string())
-        print("TASK SLO excess (%) across strategies:")
-        print(_agg_excess(task_df_all, "slo_excess_pct").to_string())
-        save_csv(_agg_excess(task_df_all, "slo_excess_ms"), outdir, "task_slo_excess_ms_by_strategy.csv")
-        save_csv(_agg_excess(task_df_all, "slo_excess_pct"), outdir, "task_slo_excess_pct_by_strategy.csv")
 
     # Save task CSVs (existing)
     save_csv(task_df_all, outdir, "task_runs_all.csv")
@@ -145,7 +189,7 @@ def _run_task_section(topo, outdir: str):
         _prefixed(agg_stats_by_profile(task_df_all, "link_mb"),    keys, "link"),
         _prefixed(agg_stats_by_profile(task_df_all, "hop_count"),  keys, "hops"),
     ]
-    # add cached
+
     if "payload_mb_cached" in task_df_all.columns:
         frames.append(_prefixed(agg_stats_by_profile(task_df_all, "payload_mb_cached"), keys, "payload_cached"))
     if "link_mb_cached" in task_df_all.columns:
@@ -181,7 +225,7 @@ def _run_workflow_section(topo, outdir: str):
     for col in base_cols:
         print(f"{col}:")
         print(agg_stats(wf_df, col).to_string(index=False))
-    # cached
+
     for col in cached_cols:
         if col in wf_df.columns:
             print(f"{col}:")
@@ -190,6 +234,24 @@ def _run_workflow_section(topo, outdir: str):
     if "selection_time_ms" in wf_df.columns:
         print("Selector runtime (ms):")
         print(agg_stats(wf_df, "selection_time_ms").to_string(index=False))
+
+    # --- NEW: combined latency+accuracy SLO violation (per strategy) ---
+    slo_l = getattr(config, "SLO_MS_STAGE", None)   # workflow uses stage SLO
+    slo_a = getattr(config, "SLO_ACC_MIN", None)
+    wL = float(getattr(config, "SOFT_W_LAT", 1.0))
+    wA = float(getattr(config, "SOFT_W_ACC", 1.0))
+    pL = float(getattr(config, "SOFT_P_LAT", 2.0))
+    pA = float(getattr(config, "SOFT_P_ACC", 2.0))
+
+    comb = combined_slo_violation_by_strategy(
+        wf_df,
+        slo_l_ms=slo_l,
+        slo_a_min=slo_a,
+        wL=wL, wA=wA, pL=pL, pA=pA,
+    )
+    print("WORKFLOW combined (lat+acc) SLO violation (% and magnitudes):")
+    print(comb.to_string(index=False))
+    save_csv(comb, outdir, "workflow_combined_slo_violation_by_strategy.csv")
 
     # Save workflow CSVs (existing)
     save_csv(wf_df, outdir, "workflow_runs.csv")
@@ -221,7 +283,7 @@ def _run_workflow_section(topo, outdir: str):
         _prefixed(agg_stats(wf_df, "link_mb"),    keys_wf, "link"),
         _prefixed(agg_stats(wf_df, "hop_count"),  keys_wf, "hops"),
     ]
-    # add cached
+
     if "payload_mb_cached" in wf_df.columns:
         frames_wf.append(_prefixed(agg_stats(wf_df, "payload_mb_cached"), keys_wf, "payload_cached"))
     if "link_mb_cached" in wf_df.columns:
@@ -248,15 +310,6 @@ def main():
     run_mode = _resolve_run_mode(args.mode)
 
     # -------- BUILD THE GRAPH --------
-    #topo = build_topology(
-    #    sats_per_ring     = config.SATS_PER_RING,
-    #    num_rings         = config.NUM_RINGS,
-    #    cloud_count       = config.NODE_COUNTS["cloud"],
-    #    edge_count        = config.NODE_COUNTS["edge"],
-    #    isl_neighbor_span = getattr(config, "ISL_NEIGHBOR_SPAN", 1),
-    #    gateways_per_ring = getattr(config, "GATEWAYS_PER_RING", 2),
-    #    inter_ring_links  = getattr(config, "INTER_RING_LINKS", True),
-    #)
     topo = build_topology_from_json()
     outdir = config.ensure_results_dir()
     print(f"[info] RUN_MODE = {run_mode}")
