@@ -65,7 +65,7 @@ def _link_ranges(kind: str) -> Dict[str, Tuple[float, float]]:
 # -------------------------
 # Builders
 # -------------------------
-def build_topology_from_json(path: str = "../resources/topo_250.json") -> Topology:
+def build_topology_from_json(path: str = "resources/topo_250.json") -> Topology:
     """
     Build a topology from a Stardust JSON snapshot.
 

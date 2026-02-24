@@ -43,7 +43,7 @@ NODE_COUNTS = {
 CACHE_FIRST_RUN = False          # steady-state (allow cache hits)
 CACHEABLE_LAYER_PATTERNS = [
     "swin_stage*",
-    "resnet_layer1*",
+    "resnet_layer*",
     "resnet_stem",
     "head",
     # add the REAL module names you want considered cacheable
