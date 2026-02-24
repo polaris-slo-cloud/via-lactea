@@ -18,25 +18,22 @@ def mb(tensors: int, bytes_per_elem: int = 2, use_mib: bool = True) -> float:
 # Module output sizes (MiB)
 # ---------------------------
 
+# Swin module names in CANDIDATE_STITCHES are:
 OUTPUT_SIZES_MB: Dict[str, float] = {
-    # ResNet18 (prefix)
-    "resnet_stem":    mb(56*56*64),
-    "resnet_layer1":  mb(56*56*64),
-    "resnet_layer2":  mb(28*28*128),
-    "resnet_layer3":  mb(14*14*256),
-    "resnet_layer4":  mb( 7* 7*512),
+    # ResNet18 outputs at the cut points
+    "resnet_stem":    mb(56 * 56 * 64),
+    "resnet_layer1":  mb(56 * 56 * 64),
+    "resnet_layer2":  mb(28 * 28 * 128),
+    "resnet_layer3":  mb(14 * 14 * 256),
+    "resnet_layer4":  mb( 7 *  7 * 512),
 
-    # Swin-T (approx; aligned to cuts)
-    "swin_patch_embed":  mb(56*56*96),
-    "swin_stage1_b0":    mb(28*28*192),
-    "swin_stage1_b1":    mb(28*28*192),
-    "swin_stage2_b0":    mb(14*14*384),
-    "swin_stage2_b1":    mb(14*14*384),
-    "swin_stage2_b2":    mb(14*14*384),
-    "swin_stage3":       mb( 7* 7*768),
-    "swin_stage4":       mb( 7* 7*768),
-    "swin_tail_extras":  mb(768),
-    "head":              mb(10),
+    # Swin-T aligned to your coarse stage modules
+    "swin_patch":   mb(56 * 56 * 96),    # after patch embed
+    "swin_stage1":  mb(28 * 28 * 192),   # stage1 output (regardless of internal blocks)
+    "swin_stage2":  mb(14 * 14 * 384),   # stage2 output
+    "swin_stage3":  mb( 7 *  7 * 768),   # stage3 output
+    "swin_stage4":  mb( 7 *  7 * 768),   # stage4 output (often pooled later, keep as-is)
+    "head":         mb(10),              # logits (your current setup)
 }
 
 
@@ -47,19 +44,20 @@ OUTPUT_SIZES_MB: Dict[str, float] = {
 # ---------------------------
 
 MODULE_LIST_SWIN: List[str] = [
-    "swin_patch_embed",
-    "swin_stage1_b0",
-    "swin_stage1_b1",
-    "swin_stage2_b0",
-    "swin_stage2_b1",
+    "swin_patch",
+    "swin_stage1",
+    "swin_stage2",
     "swin_stage3",
     "swin_stage4",
-    "swin_tail_extras",
     "head",
 ]
 
-PREFIX_LAYER1 = ["resnet_stem", "resnet_layer1"]
-PREFIX_LAYER2 = ["resnet_stem", "resnet_layer1", "resnet_layer2"]
+PREFIX_C1: List[str] = ["resnet_stem"]                       # C2
+PREFIX_C2: List[str] = ["resnet_stem", "resnet_layer1"]                       # C2
+PREFIX_C3: List[str] = ["resnet_stem", "resnet_layer1", "resnet_layer2"]      # C3
+PREFIX_C4: List[str] = ["resnet_stem", "resnet_layer1", "resnet_layer2", "resnet_layer3"]  # C4
+PREFIX_C5: List[str] = ["resnet_stem", "resnet_layer1", "resnet_layer2", "resnet_layer3", "resnet_layer4"]
+
 #  FloodNet
 #  1 |      768 | acc@1 = 79.33%
 #  2 |      768 | acc@1 = 85.11%
@@ -82,30 +80,26 @@ PREFIX_LAYER2 = ["resnet_stem", "resnet_layer1", "resnet_layer2"]
 
 
 CANDIDATE_STITCHES: Dict[int, Dict] = {
+    # sid=1 (all TinySwin)
     1: {"acc": 91.62, "modules": MODULE_LIST_SWIN},
 
-    # Layer-1 prefix (C2)
-    2: {"acc": 86.00, "modules": PREFIX_LAYER1 + [
-        "swin_stage1_b0","swin_stage1_b1","swin_stage2_b0","swin_stage2_b1",
-        "swin_stage3","swin_stage4","swin_tail_extras","head"
-    ]},
-    3: {"acc": 84.33, "modules": PREFIX_LAYER1 + [
-        "swin_stage2_b0","swin_stage2_b1","swin_stage3","swin_stage4","swin_tail_extras","head"
-    ]},
-    4: {"acc": 87.00, "modules": PREFIX_LAYER1 + [
-        "swin_stage2_b1","swin_stage3","swin_stage4","swin_tail_extras","head"
-    ]},
+    # sid=2: C2 -> S2
+    2: {"acc": 86.00, "modules": PREFIX_C1 + ["swin_stage1", "swin_stage2", "swin_stage3", "swin_stage4", "head"]},
 
-    # Layer-2 prefix (C3)
-    5: {"acc": 84.38, "modules": PREFIX_LAYER2 + [
-        "swin_stage2_b0","swin_stage2_b1","swin_stage3","swin_stage4","swin_tail_extras","head"
-    ]},
-    6: {"acc": 83.94, "modules": PREFIX_LAYER2 + [
-        "swin_stage2_b1","swin_stage3","swin_stage4","swin_tail_extras","head"
-    ]},
-    7: {"acc": 84.60, "modules": PREFIX_LAYER2 + [
-        "swin_stage2_b2","swin_stage3","swin_stage4","swin_tail_extras","head"
-    ]},
+    # sid=3: C2 -> S3
+    3: {"acc": 84.33, "modules": PREFIX_C2 + ["swin_stage2", "swin_stage3", "swin_stage4", "head"]},
+
+    # sid=4: C3 -> S3
+    4: {"acc": 87.00, "modules": PREFIX_C3 + ["swin_stage3", "swin_stage4", "head"]},
+
+    # sid=5: C3 -> S4
+    5: {"acc": 84.38, "modules": PREFIX_C4 + ["swin_stage4", "head"]},
+
+    # sid=6: C4 -> S4
+    6: {"acc": 83.94, "modules": PREFIX_C5 + ["head"]},
+
+    # sid=7: C4 -> S5 (map S5 to head)
+    7: {"acc": 84.60, "modules": PREFIX_C4 + ["swin_stage3","head"]},
 }
 
 # ---------------------------

@@ -10,7 +10,7 @@ SEED               = 42
 
 # Simulation sizes
 NUM_RUNS_TASK      = 20
-NUM_RUNS_WORKFLOW  = 2
+NUM_RUNS_WORKFLOW  = 1
 WORKFLOW_STAGES    = 3
 
 # SLO knobs
@@ -42,11 +42,13 @@ NODE_COUNTS = {
 # caching policy
 CACHE_FIRST_RUN = False          # steady-state (allow cache hits)
 CACHEABLE_LAYER_PATTERNS = [
-    "swin_stage1_*",
+    "swin_stage*",
     "resnet_layer1*",
+    "resnet_stem",
+    "head",
     # add the REAL module names you want considered cacheable
 ]
-CACHE_DEBUG = False
+CACHE_DEBUG = True
 
 # Which baselines (strategies) to run by default.
 # Accepted values:

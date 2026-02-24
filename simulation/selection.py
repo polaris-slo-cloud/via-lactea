@@ -12,11 +12,23 @@ This version:
 - Adds _allowed_pairs_for_edge_slofirst() used only by SLO-first DP.
 - Ensures SLO-first ALWAYS returns a finite row (never blank/empty group), even on failure.
 - Fixes SLO-first "3e15" by fail-open + adaptive relaxation when SLO-first pruning/forward-filter removes all feasible pairs.
-- Adds TOP-K E2E recheck for SLO-first only:
-    * DP evaluates all stitches quickly (network-only).
-    * Then E2E is computed for the best K DP candidates.
-    * Pick the smallest E2E latency among those K.
-  This closes the latency gap to Greedy(L) while keeping selection time far below Greedy(L).
+- Adds TOP-K E2E recheck for SLO-first only.
+- Node-aware caching for DP cached totals:
+    If the layer output is already cached on the chosen src_node, then cached payload/link contribution is 0.
+    Otherwise, cached contribution equals uncached contribution.
+  This affects ONLY payload_mb_cached/link_mb_cached (uncached fields unchanged).
+
+Expected (recommended) cache state:
+  placement.LAYER_CACHE: Dict[str, Set[str]]
+    node_id -> set of cached layer/module names
+
+Fallback behavior:
+  If placement.LAYER_CACHE is missing, uses pattern policy via CACHEABLE_LAYER_PATTERNS.
+
+Important note about E2E overwrite:
+- We overwrite payload_mb/link_mb/hop_count from E2E (for reporting).
+- We DO NOT overwrite payload_mb_cached/link_mb_cached unless E2E explicitly provides cached fields.
+  Otherwise, we keep the DP cached totals (node-aware caching result).
 """
 
 import math
@@ -29,7 +41,7 @@ from typing import Dict, List, Optional, Tuple, Iterable
 import numpy as np
 from dataclasses import dataclass
 
-from . import config
+from . import config, placement
 from .profiles import CANDIDATE_STITCHES
 from .runtime import e2e_metrics_for_stitch, _nodes_for_module
 from .selection_algo import _pair_shortest_cached
@@ -89,13 +101,10 @@ if not isinstance(SLO_FIRST_RELAX_STEPS, (list, tuple)) or len(SLO_FIRST_RELAX_S
     SLO_FIRST_RELAX_STEPS = [(2, 64), (4, 256), (8, 1024)]
 
 # SLO-first latency-accuracy closeness knob (SLO-first ONLY)
-# Number of DP-best candidates to re-evaluate with full E2E and pick min E2E latency.
 SLO_FIRST_E2E_TOPK = int(_cfg("SLO_FIRST_E2E_TOPK", 5))
 if SLO_FIRST_E2E_TOPK < 1:
     SLO_FIRST_E2E_TOPK = 1
 
-# If True: pick min E2E latency among top-K, regardless of soft score ordering within that top-K.
-# If False: keep DP best stitch, E2E is only for reporting (old behavior with K=1).
 SLO_FIRST_PICK_BY_E2E_IN_TOPK = bool(_cfg("SLO_FIRST_PICK_BY_E2E_IN_TOPK", True))
 
 
@@ -247,6 +256,30 @@ def _cached_payload_mb_for_layer(layer_name: str, uncached_mb: float) -> float:
     return 0.0 if _is_cacheable_layer(layer_name) else float(uncached_mb)
 
 
+def _node_has_layer_cache(node: Node, layer_name: str) -> bool:
+    """
+    Node-aware cache check.
+
+    Preferred: placement.LAYER_CACHE: Dict[node_id -> Set[layer_name]]
+    If missing, fallback to pattern-based policy (_is_cacheable_layer).
+    If CACHE_FIRST_RUN=True, treat as miss everywhere.
+    """
+    if bool(getattr(config, "CACHE_FIRST_RUN", True)):
+        return False
+
+    cache = getattr(placement, "LAYER_CACHE", None)
+    if isinstance(cache, dict):
+        s = cache.get(node.nid)
+        if s is None:
+            return False
+        try:
+            return layer_name in s
+        except Exception:
+            return False
+
+    return _is_cacheable_layer(layer_name)
+
+
 # ----------------------------------------------------------------------------- #
 # Forward-only filter (SLO-first DP only)                                        #
 # ----------------------------------------------------------------------------- #
@@ -309,21 +342,18 @@ def _filter_forward_pairs(pairs: List[Tuple[Node, Node]]) -> List[Tuple[Node, No
 # Pair selection (SHARED, do not prune here)                                     #
 # ----------------------------------------------------------------------------- #
 
-def _allowed_pairs_for_edge(placement: Dict, m_src: str, m_dst: str) -> List[Tuple[Node, Node]]:
-    """
-    Shared helper. Must NOT include SLO-first-only pruning, otherwise baselines can change.
-    """
+def _allowed_pairs_for_edge(placement_dict: Dict, m_src: str, m_dst: str) -> List[Tuple[Node, Node]]:
     key = (m_src, m_dst)
-    if key in placement:
-        pairs = placement[key]
+    if key in placement_dict:
+        pairs = placement_dict[key]
         out: List[Tuple[Node, Node]] = []
         for p in pairs:
             if isinstance(p, tuple) and len(p) == 2 and p[0] is not None and p[1] is not None:
                 out.append((p[0], p[1]))
         return out
 
-    src_nodes = _nodes_for_module(placement, m_src)
-    dst_nodes = _nodes_for_module(placement, m_dst)
+    src_nodes = _nodes_for_module(placement_dict, m_src)
+    dst_nodes = _nodes_for_module(placement_dict, m_dst)
     return [(s, d) for s in src_nodes for d in dst_nodes]
 
 
@@ -336,8 +366,8 @@ def _limit_nodes(nodes: Iterable[Node], k: int) -> List[Node]:
     return nn[:k] if len(nn) > k else nn
 
 
-def _nodes_for_module_limited(placement: Dict, module_name: str, k_nodes: int) -> List[Node]:
-    nodes = _nodes_for_module(placement, module_name)
+def _nodes_for_module_limited(placement_dict: Dict, module_name: str, k_nodes: int) -> List[Node]:
+    nodes = _nodes_for_module(placement_dict, module_name)
     if not nodes:
         return []
     return _limit_nodes(nodes, k_nodes)
@@ -350,22 +380,16 @@ def _cap_pairs(pairs: List[Tuple[Node, Node]], k_pairs: int) -> List[Tuple[Node,
 
 
 def _allowed_pairs_for_edge_slofirst(
-    placement: Dict,
+    placement_dict: Dict,
     m_src: str,
     m_dst: str,
     *,
     k_nodes: int,
     k_pairs: int,
 ) -> List[Tuple[Node, Node]]:
-    """
-    SLO-first-only candidate pairs with caps.
-
-    Fix: fail-open when forward filtering removes all pairs.
-    This keeps SLO-first robust without touching shared helpers/baselines.
-    """
     key = (m_src, m_dst)
-    if key in placement:
-        pairs = placement[key]
+    if key in placement_dict:
+        pairs = placement_dict[key]
         out: List[Tuple[Node, Node]] = []
         for p in pairs:
             if isinstance(p, tuple) and len(p) == 2 and p[0] is not None and p[1] is not None:
@@ -380,8 +404,8 @@ def _allowed_pairs_for_edge_slofirst(
             return out_capped
         return []
 
-    src_nodes = _nodes_for_module_limited(placement, m_src, k_nodes)
-    dst_nodes = _nodes_for_module_limited(placement, m_dst, k_nodes)
+    src_nodes = _nodes_for_module_limited(placement_dict, m_src, k_nodes)
+    dst_nodes = _nodes_for_module_limited(placement_dict, m_dst, k_nodes)
     if not src_nodes or not dst_nodes:
         return []
 
@@ -425,7 +449,7 @@ def _beam_prune(dp: Dict[str, DPState], beam_width: int) -> Dict[str, DPState]:
 
 def _dp_net_for_stitch(
     sid: int,
-    placement: Dict,
+    placement_dict: Dict,
     ftopo: Topology,
     *,
     stage_prune_ms: Optional[float],
@@ -466,9 +490,9 @@ def _dp_net_for_stitch(
 
     dp_prev: Dict[str, DPState] = {}
 
-    first_nodes = _nodes_for_module_limited(placement, mods[0], k_nodes)
+    first_nodes = _nodes_for_module_limited(placement_dict, mods[0], k_nodes)
     if not first_nodes:
-        pairs01 = _allowed_pairs_for_edge_slofirst(placement, mods[0], mods[1], k_nodes=k_nodes, k_pairs=k_pairs)
+        pairs01 = _allowed_pairs_for_edge_slofirst(placement_dict, mods[0], mods[1], k_nodes=k_nodes, k_pairs=k_pairs)
         first_nodes = sorted({p[0] for p in pairs01}, key=lambda n: n.nid)[:k_nodes]
     if not first_nodes:
         return None, 0
@@ -478,10 +502,11 @@ def _dp_net_for_stitch(
 
     for i in range(len(mods) - 1):
         m_src, m_dst = mods[i], mods[i + 1]
-        payload_i = module_output_mb(m_src)
-        payload_i_cached = _cached_payload_mb_for_layer(m_src, payload_i) if enable_caching else payload_i
+        payload_i = float(module_output_mb(m_src))
 
-        allowed_pairs = _allowed_pairs_for_edge_slofirst(placement, m_src, m_dst, k_nodes=k_nodes, k_pairs=k_pairs)
+        allowed_pairs = _allowed_pairs_for_edge_slofirst(
+            placement_dict, m_src, m_dst, k_nodes=k_nodes, k_pairs=k_pairs
+        )
         if not allowed_pairs:
             return None, ssp_calls
 
@@ -513,11 +538,18 @@ def _dp_net_for_stitch(
             raw_net = float(prev_raw) + float(seg_lat_ms)
             hops = int(prev_hops) + int(seg_hops)
 
-            payload = float(prev_payload) + float(payload_i)
-            link = float(prev_link) + float(payload_i) * float(seg_hops)
+            # Uncached totals
+            payload = float(prev_payload) + payload_i
+            link = float(prev_link) + payload_i * float(seg_hops)
 
-            payload_c = float(prev_payload_cached) + float(payload_i_cached)
-            link_c = float(prev_link_cached) + float(payload_i_cached) * float(seg_hops)
+            # Cached totals (node-aware)
+            if enable_caching and _node_has_layer_cache(src_node, m_src):
+                payload_i_cached_node = 0.0
+            else:
+                payload_i_cached_node = payload_i
+
+            payload_c = float(prev_payload_cached) + float(payload_i_cached_node)
+            link_c = float(prev_link_cached) + float(payload_i_cached_node) * float(seg_hops)
 
             obj = _hop_penalized_lat(raw_net, hops)
             cand: DPState = (obj, hops, payload, link, payload_c, link_c, src_node.nid, raw_net)
@@ -562,17 +594,13 @@ def _dp_net_for_stitch(
 
 def _dp_net_for_stitch_adaptive(
     sid: int,
-    placement: Dict,
+    placement_dict: Dict,
     ftopo: Topology,
     *,
     stage_prune_ms: Optional[float],
     enable_caching: bool,
     dijk_cache: Dict[str, Dict[str, Tuple[Optional[float], Optional[List[str]]]]],
 ) -> Tuple[Optional[Dict], int]:
-    """
-    Tries strict caps first, then relaxes (SLO-first only).
-    Prevents "all stitches fail => 3e15" while staying fast in the common case.
-    """
     total_calls = 0
 
     steps = list(SLO_FIRST_RELAX_STEPS)
@@ -583,7 +611,7 @@ def _dp_net_for_stitch_adaptive(
 
     for (k_nodes, k_pairs) in steps:
         dp, calls = _dp_net_for_stitch(
-            sid, placement, ftopo,
+            sid, placement_dict, ftopo,
             stage_prune_ms=stage_prune_ms,
             enable_caching=enable_caching,
             dijk_cache=dijk_cache,
@@ -695,8 +723,37 @@ def eval_all_stitches_net_metrics(
 
 
 # ----------------------------------------------------------------------------- #
-# SLO-first selector                                                             #
+# Rejection row                                                                  #
 # ----------------------------------------------------------------------------- #
+
+def _reject_row(stitch_id=None, acc=np.nan, slo_hit=False):
+    return {
+        "stitch_id": stitch_id,
+        "latency_ms": float("inf"),
+        "compute_ms": 0.0,
+        "net_latency_ms": float("inf"),
+        "payload_mb": 0.0,
+        "link_mb": 0.0,
+        "payload_mb_cached": 0.0,
+        "link_mb_cached": 0.0,
+        "hop_count": 0,
+        "acc": acc,
+        "met_slo": slo_hit,
+        "slo_ms": getattr(config, "SLO_MS_WORKFLOW", None),
+        "slo_excess_ms": float("inf") if not slo_hit else 0.0,
+        "slo_excess_pct": float("nan"),
+        "met_dual_slo": slo_hit,
+        "selection_time_ms": 0.0,
+        "ssp_calls": 0,
+        "soft_slo_score": float("inf"),
+        "v_lat_ms": float("inf"),
+        "v_lat_norm": float("inf"),
+        "v_acc": float("inf"),
+        "v_acc_norm": float("inf"),
+        "lat_target_ms": _workflow_latency_target_ms(),
+        "acc_target": _accuracy_target(None),
+    }
+
 
 def _reject_row_finite(stitch_id=None, acc=np.nan, slo_hit=False, huge=1e15):
     r = _reject_row(stitch_id=stitch_id, acc=acc, slo_hit=slo_hit)
@@ -709,24 +766,22 @@ def _reject_row_finite(stitch_id=None, acc=np.nan, slo_hit=False, huge=1e15):
     return r
 
 
+# ----------------------------------------------------------------------------- #
+# SLO-first selector                                                             #
+# ----------------------------------------------------------------------------- #
+
 def choose_stitch_for_task(
     placement: Dict,
     topo: Topology,
     rng: random.Random,
     task_profile_name: str,
     *,
-    slo_ms: Optional[float] = None,          # kept for API compatibility
+    slo_ms: Optional[float] = None,
     acc_min: Optional[float] = None,
     per_edge_prop_cap_ms: Optional[float] = None,
 ) -> Dict:
     """
-    Returns a dict always (never None) so stats never show empty rows.
-
-    Selection is:
-      1) DP per stitch (network-only) to get fast candidates
-      2) soft score key for ranking
-      3) E2E recheck for top-K candidates (SLO-first only)
-      4) pick the minimum E2E latency among those K (optional, enabled by default)
+    IMPORTANT: signature uses `placement` to match simulator calls that pass placement=...
     """
     t0 = time.perf_counter()
 
@@ -789,11 +844,9 @@ def choose_stitch_for_task(
 
     candidates.sort(key=lambda kv: kv[0])
 
-    # DP-best (old behavior baseline)
     best_dp = candidates[0][1]
     best_sid = int(best_dp["stitch_id"])
 
-    # E2E recheck for top-K DP candidates (SLO-first only)
     K = min(int(SLO_FIRST_E2E_TOPK), len(candidates))
     topk = [candidates[i][1] for i in range(K)]
 
@@ -820,10 +873,14 @@ def choose_stitch_for_task(
             best_e2e = e2e
             best_e2e_dp = dp_cand
 
-    # Pick policy
     if SLO_FIRST_PICK_BY_E2E_IN_TOPK and (best_e2e is not None) and (best_e2e_dp is not None):
         out = dict(best_e2e_dp)
         out["valid"] = True
+
+        # Keep DP cached totals unless E2E explicitly provides cached totals
+        dp_cached_payload = float(out.get("payload_mb_cached", out.get("payload_mb", 0.0)))
+        dp_cached_link = float(out.get("link_mb_cached", out.get("link_mb", 0.0)))
+
         out.update({
             "latency_ms": float(best_e2e.get("latency_ms", out.get("latency_ms", 1e15))),
             "compute_ms": float(best_e2e.get("compute_ms", 0.0)),
@@ -833,10 +890,21 @@ def choose_stitch_for_task(
             "hop_count": int(best_e2e.get("hop_count", out.get("hop_count", 0))),
             "stitch_id": int(out.get("stitch_id", best_sid)),
         })
+
+        out["payload_mb_cached"] = dp_cached_payload
+        out["link_mb_cached"] = dp_cached_link
+        if "payload_mb_cached" in best_e2e:
+            out["payload_mb_cached"] = float(best_e2e["payload_mb_cached"])
+        if "link_mb_cached" in best_e2e:
+            out["link_mb_cached"] = float(best_e2e["link_mb_cached"])
+
     else:
-        # Fallback: old behavior (E2E only for the DP-best stitch)
         out = dict(best_dp)
         out["valid"] = True
+
+        dp_cached_payload = float(out.get("payload_mb_cached", out.get("payload_mb", 0.0)))
+        dp_cached_link = float(out.get("link_mb_cached", out.get("link_mb", 0.0)))
+
         try:
             e2e = e2e_metrics_for_stitch(
                 best_sid, placement, topo, rng, task_profile_name,
@@ -850,10 +918,21 @@ def choose_stitch_for_task(
                 "link_mb": float(e2e.get("link_mb", out.get("link_mb", 0.0))),
                 "hop_count": int(e2e.get("hop_count", out.get("hop_count", 0))),
             })
+
+            out["payload_mb_cached"] = dp_cached_payload
+            out["link_mb_cached"] = dp_cached_link
+            if "payload_mb_cached" in e2e:
+                out["payload_mb_cached"] = float(e2e["payload_mb_cached"])
+            if "link_mb_cached" in e2e:
+                out["link_mb_cached"] = float(e2e["link_mb_cached"])
+
         except Exception:
             out["latency_ms"] = float(out.get("latency_ms", 1e15))
             out["net_latency_ms"] = float(out.get("net_latency_ms", 1e15))
             out["valid"] = False
+            # Keep DP cached totals even on E2E failure
+            out["payload_mb_cached"] = dp_cached_payload
+            out["link_mb_cached"] = dp_cached_link
 
     out["selection_time_ms"] = (time.perf_counter() - t0) * 1000.0
     out["ssp_calls"] = int(ssp_calls_total)
@@ -950,36 +1029,3 @@ def full_model_stitch(
     out = _mirror_cached_fields(out)
     out["selection_time_ms"] = (time.perf_counter() - t0) * 1000.0
     return out
-
-
-# ----------------------------------------------------------------------------- #
-# Rejection row                                                                  #
-# ----------------------------------------------------------------------------- #
-
-def _reject_row(stitch_id=None, acc=np.nan, slo_hit=False):
-    return {
-        "stitch_id": stitch_id,
-        "latency_ms": float("inf"),
-        "compute_ms": 0.0,
-        "net_latency_ms": float("inf"),
-        "payload_mb": 0.0,
-        "link_mb": 0.0,
-        "payload_mb_cached": 0.0,
-        "link_mb_cached": 0.0,
-        "hop_count": 0,
-        "acc": acc,
-        "met_slo": slo_hit,
-        "slo_ms": getattr(config, "SLO_MS_WORKFLOW", None),
-        "slo_excess_ms": float("inf") if not slo_hit else 0.0,
-        "slo_excess_pct": float("nan"),
-        "met_dual_slo": slo_hit,
-        "selection_time_ms": 0.0,
-        "ssp_calls": 0,
-        "soft_slo_score": float("inf"),
-        "v_lat_ms": float("inf"),
-        "v_lat_norm": float("inf"),
-        "v_acc": float("inf"),
-        "v_acc_norm": float("inf"),
-        "lat_target_ms": _workflow_latency_target_ms(),
-        "acc_target": _accuracy_target(None),
-    }
