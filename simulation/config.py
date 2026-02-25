@@ -10,7 +10,7 @@ SEED               = 42
 
 # Simulation sizes
 NUM_RUNS_TASK      = 20
-NUM_RUNS_WORKFLOW  = 1
+NUM_RUNS_WORKFLOW  = 10
 WORKFLOW_STAGES    = 3
 
 # SLO knobs
@@ -56,7 +56,7 @@ CACHE_DEBUG = True
 #   "SLO-first"                       -> run only SLO-first
 #   "SLO-first,Round-Robin"           -> comma/pipe separated names
 #   ["SLO-first", "Round-Robin"]      -> list is also fine
-ENABLED_BASELINES = "Round-Robin"
+ENABLED_BASELINES = "all"
 
 
 # Runtime variability (coeff. of variation)

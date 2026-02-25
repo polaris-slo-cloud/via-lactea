@@ -1,7 +1,8 @@
 #!/bin/bash
 
 DATASETS=("wildfire" "floodnet" "c10")
-TOPO_SIZES=("250" "500" "1000" "2000" "3000" "6000")
+TOPO_SIZES=("250")
+#TOPO_SIZES=("250" "500" "1000" "2000" "3000" "6000")
 
 LOG_FILE="run_all_$(date +%Y%m%d_%H%M%S).log"
 
@@ -14,7 +15,7 @@ TOTAL_START=$(date +%s)
 for DATASET in "${DATASETS[@]}"; do
   for SIZE in "${TOPO_SIZES[@]}"; do
 
-    TOPO="../resources/topo_${SIZE}.json"
+    TOPO="resources/topo_${SIZE}.json"
 
     echo "----------------------------------------" | tee -a $LOG_FILE
     echo "Dataset: $DATASET | Topology: $SIZE" | tee -a $LOG_FILE
@@ -22,7 +23,7 @@ for DATASET in "${DATASETS[@]}"; do
 
     START=$(date +%s)
 
-    python main.py --dataset "$DATASET" --topo "$TOPO" >> $LOG_FILE 2>&1
+    python3 main.py --dataset "$DATASET" --topo "$TOPO" >> $LOG_FILE 2>&1
 
     END=$(date +%s)
     DURATION=$((END - START))
