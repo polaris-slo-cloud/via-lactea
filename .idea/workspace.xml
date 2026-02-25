@@ -5,24 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4d95d857-c60d-465e-8cfc-663a3b2d0ac4" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/experiments/run_all.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/aggregated_results.py" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/aggregated_results.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_accuracy_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_combined_slo_violation_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_runs.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_runs_stitches.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_ALL_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_latency_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_link_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_link_cached_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_payload_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_payload_cached_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_selector_time_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/sat250_edge85_cloud1_seed42/workflow_summary_ssp_calls_by_strategy.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/simulation/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/simulation/runtime.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation/runtime.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/simulation/topology.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation/topology.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/simulation/profiles.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation/profiles.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -53,27 +40,28 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.aggregated_results.executor&quot;: &quot;Run&quot;,
-    &quot;Python.leo-simu.executor&quot;: &quot;Run&quot;,
-    &quot;Python.main.executor&quot;: &quot;Run&quot;,
-    &quot;Python.run_experiment.executor&quot;: &quot;Debug&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.aggregated_results.executor": "Run",
+    "Python.leo-simu.executor": "Run",
+    "Python.main.executor": "Run",
+    "Python.run_experiment.executor": "Debug",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "SHELLCHECK.PATH": "/Users/kenia/Library/Application Support/JetBrains/PyCharm2025.1/plugins/Shell Script/shellcheck",
+    "git-widget-placeholder": "main",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/simulation/experiments/results/sat250_edge85_cloud1_seed42" />
@@ -237,7 +225,7 @@
       <workItem from="1771439129661" duration="3009000" />
       <workItem from="1771781644227" duration="22961000" />
       <workItem from="1771935349507" duration="23700000" />
-      <workItem from="1772037707424" duration="2254000" />
+      <workItem from="1772037707424" duration="4908000" />
     </task>
     <servers />
   </component>

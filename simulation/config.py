@@ -71,11 +71,10 @@ TASK_PROFILES_FOR_WORKFLOW = ["extract-frames", "object-det", "prepare-ds"]
 RR_START_OFFSET = 0
 
 def ensure_results_dir() -> str:
-    """Create and return the output directory."""
-    if RESULT_DIR:
-        outdir = RESULT_DIR
-    else:
-        auto = f"sat{NODE_COUNTS['sat']}_edge{NODE_COUNTS['edge']}_cloud{NODE_COUNTS['cloud']}_seed{SEED}"
-        outdir = os.path.join(BASE_RESULTS_DIR, auto)
+    dataset = getattr(__import__(__name__), "DATASET", "wildfire")
+
+    run_folder = f"sat{NODE_COUNTS['sat']}_edge{NODE_COUNTS['edge']}_cloud{NODE_COUNTS['cloud']}_seed{SEED}"
+
+    outdir = os.path.join(BASE_RESULTS_DIR, dataset, run_folder)
     os.makedirs(outdir, exist_ok=True)
     return outdir

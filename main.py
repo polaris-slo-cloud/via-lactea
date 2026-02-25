@@ -305,12 +305,22 @@ def _run_workflow_section(topo, outdir: str):
 def main():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--mode", choices=["task", "workflow", "both"], help="Override run mode")
+    parser.add_argument(
+        "--dataset",
+        default=getattr(config, "DATASET", "wildfire"),
+        choices=["wildfire", "floodnet", "c10"],
+    )
+    parser.add_argument(
+        "--topo",
+        default="../resources/topo_250.json",
+        help="Path to Stardust topology snapshot JSON (e.g., resources/topo_3000.json)",
+    )
     args, _ = parser.parse_known_args()
 
     run_mode = _resolve_run_mode(args.mode)
-
+    config.DATASET = args.dataset
     # -------- BUILD THE GRAPH --------
-    topo = build_topology_from_json()
+    topo = build_topology_from_json(args.topo)
     outdir = config.ensure_results_dir()
     print(f"[info] RUN_MODE = {run_mode}")
     print(f"[info] Saving all CSVs to: {outdir}")
