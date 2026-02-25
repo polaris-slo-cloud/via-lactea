@@ -56,7 +56,7 @@ CACHE_DEBUG = True
 #   "SLO-first"                       -> run only SLO-first
 #   "SLO-first,Round-Robin"           -> comma/pipe separated names
 #   ["SLO-first", "Round-Robin"]      -> list is also fine
-ENABLED_BASELINES = "all"
+ENABLED_BASELINES = "Round-Robin"
 
 
 # Runtime variability (coeff. of variation)

@@ -10,13 +10,15 @@ It reads (per node-count folder, e.g. results/sat1000_edge85_cloud1_seed42):
 - workflow_summary_latency_by_strategy.csv
 - workflow_summary_hopcount_by_strategy.csv
 - workflow_summary_link_by_strategy.csv
+- workflow_accuracy_by_strategy.csv                    [NEW]
 
 Outputs (to OUTPUT_DIR):
 - aggregated_latency.csv
 - aggregated_hopcount.csv
 - aggregated_link_mb.csv
 - aggregated_selector_ms.csv                            [TASK-ONLY]
-- aggregated_merged.csv
+- aggregated_accuracy.csv                               [NEW]
+- aggregated_merged.csv                                 [UPDATED]
 """
 
 import os
@@ -46,6 +48,10 @@ WF_FILES = {
     "hopcount":  "workflow_summary_hopcount_by_strategy.csv",
     "link":      "workflow_summary_link_by_strategy.csv",
     # no workflow-level selector file
+}
+
+ACC_FILES = {
+    "accuracy":  "workflow_accuracy_by_strategy.csv",
 }
 
 # Pattern for directory names like:
@@ -106,11 +112,49 @@ def read_workflow_metric(dirpath: str, filename: str, nodes: int,
     df.insert(0, "nodes", nodes)
     return df
 
+def read_workflow_accuracy(dirpath: str, filename: str, nodes: int,
+                           strategies: Optional[List[str]]) -> pd.DataFrame:
+    """
+    Reads workflow accuracy CSV. Accepts either:
+      - strategy,mean,median,p95,p99
+      - strategy,accuracy
+      - strategy,avg_accuracy
+      - strategy,mean_accuracy
+
+    Returns columns: nodes, profile='workflow', strategy, mean
+    where 'mean' is the average accuracy value.
+    """
+    path = os.path.join(dirpath, filename)
+    if not os.path.exists(path):
+        return pd.DataFrame(columns=["nodes", "profile", "strategy", "mean"])
+
+    df = pd.read_csv(path)
+    if "strategy" not in df.columns:
+        return pd.DataFrame(columns=["nodes", "profile", "strategy", "mean"])
+
+    # Find the value column
+    value_col = None
+    for c in ["mean", "accuracy", "avg_accuracy", "mean_accuracy", "acc"]:
+        if c in df.columns:
+            value_col = c
+            break
+    if value_col is None:
+        return pd.DataFrame(columns=["nodes", "profile", "strategy", "mean"])
+
+    if strategies:
+        df = df[df["strategy"].isin(strategies)]
+
+    out = df[["strategy", value_col]].copy()
+    out = out.rename(columns={value_col: "mean"})
+    out.insert(0, "profile", "workflow")
+    out.insert(0, "nodes", nodes)
+    return out
+
 def build_metric_across_nodes(base_dir: str, metric_key: str,
                               strategies: Optional[List[str]]) -> pd.DataFrame:
     """
     Builds a metric across nodes for both task-level and (if available) workflow-level.
-    metric_key in {"latency","hopcount","link","selector"}
+    metric_key in {"latency","hopcount","link","selector","accuracy"}
     Returns DataFrame with columns: nodes, profile, strategy, mean
     """
     rows = []
@@ -120,6 +164,10 @@ def build_metric_across_nodes(base_dir: str, metric_key: str,
             continue
 
         dirpath = os.path.join(base_dir, name)
+
+        if metric_key == "accuracy":
+            rows.append(read_workflow_accuracy(dirpath, ACC_FILES["accuracy"], nodes, strategies))
+            continue
 
         # Task metric (always try)
         task_file = TASK_FILES.get(metric_key)
@@ -136,6 +184,7 @@ def build_metric_across_nodes(base_dir: str, metric_key: str,
 
     out = pd.concat(rows, ignore_index=True)
     out["nodes"] = pd.to_numeric(out["nodes"], errors="coerce")
+    out["mean"] = pd.to_numeric(out["mean"], errors="coerce")
     out = out.dropna(subset=["nodes", "mean"])
     out = out.sort_values(["profile", "strategy", "nodes"]).reset_index(drop=True)
     return out
@@ -152,7 +201,7 @@ def save_csv(df: pd.DataFrame, outdir: str, filename: str) -> str:
 
 def main():
     ap = argparse.ArgumentParser(
-        description="Aggregate experiment CSVs and build latency and hopcount summaries across nodes."
+        description="Aggregate experiment CSVs and build summaries across nodes (latency/hops/link/selector/accuracy)."
     )
     ap.add_argument(
         "--base-dir",
@@ -184,8 +233,9 @@ def main():
     hop_df      = build_metric_across_nodes(base_dir, "hopcount", strategies)
     lnk_df      = build_metric_across_nodes(base_dir, "link", strategies)
     selector_df = build_metric_across_nodes(base_dir, "selector", strategies)  # task-only
+    acc_df      = build_metric_across_nodes(base_dir, "accuracy", strategies)  # workflow accuracy
 
-    if lat_df.empty and hop_df.empty and lnk_df.empty and selector_df.empty:
+    if lat_df.empty and hop_df.empty and lnk_df.empty and selector_df.empty and acc_df.empty:
         print("[warn] No data found. Check paths, directory pattern, and files.")
         return
 
@@ -194,14 +244,33 @@ def main():
     hop_path = save_csv(hop_df, out_dir, "aggregated_hopcount.csv")
     lnk_path = save_csv(lnk_df, out_dir, "aggregated_link_mb.csv")
     sel_path = save_csv(selector_df, out_dir, "aggregated_selector_ms.csv")
+    acc_path = save_csv(acc_df, out_dir, "aggregated_accuracy.csv")
 
     print(f"[ok] Wrote: {lat_path}")
     print(f"[ok] Wrote: {hop_path}")
     print(f"[ok] Wrote: {lnk_path}")
     print(f"[ok] Wrote: {sel_path}")
+    print(f"[ok] Wrote: {acc_path}")
 
-    # Merge (left join on nodes + profile + strategy; latency as base)
-    merged = lat_df.rename(columns={"mean": "mean_latency_ms"})
+    # Merge (left join on nodes + profile + strategy; latency as base if present, else accuracy as base)
+    if not lat_df.empty:
+        merged = lat_df.rename(columns={"mean": "mean_latency_ms"})
+    elif not acc_df.empty:
+        merged = acc_df.rename(columns={"mean": "mean_accuracy"}).copy()
+    else:
+        # fallback: pick the first non-empty metric
+        for df, col in [
+            (hop_df, "mean_hop_count"),
+            (lnk_df, "mean_link_mb"),
+            (selector_df, "mean_selector_ms"),
+        ]:
+            if not df.empty:
+                merged = df.rename(columns={"mean": col}).copy()
+                break
+        else:
+            print("[warn] Nothing to merge.")
+            return
+
     if not hop_df.empty:
         merged = merged.merge(
             hop_df.rename(columns={"mean": "mean_hop_count"}),
@@ -217,6 +286,12 @@ def main():
     if not selector_df.empty:
         merged = merged.merge(
             selector_df.rename(columns={"mean": "mean_selector_ms"}),
+            on=["nodes", "profile", "strategy"],
+            how="left",
+        )
+    if not acc_df.empty:
+        merged = merged.merge(
+            acc_df.rename(columns={"mean": "mean_accuracy"}),
             on=["nodes", "profile", "strategy"],
             how="left",
         )

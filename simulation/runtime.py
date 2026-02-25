@@ -1,5 +1,14 @@
 """
 Compute-time sampling and end-to-end stitch evaluation.
+
+Key fix to prevent baseline "explosions":
+- Selection used dijkstra_base_path_between_nodes() to test reachability
+- Evaluation used route_hops_nodes() to build the actual hop list
+If these two routing views ever disagree, you can select a "reachable" pair and later
+get hops == [], which turns net_latency_ms into inf and poisons means.
+
+Baselines still do NOT optimize latency (unless greedy_objective == "latency").
+They only check feasibility using the same routing primitive that is used later for scoring.
 """
 
 import math, random
@@ -9,7 +18,7 @@ from . import config
 from .profiles import TASK_PROFILES, OUTPUT_SIZES_MB, CANDIDATE_STITCHES
 from .topology import (
     Node, _hop_latency_ms, route_hops_nodes, Topology,
-    dijkstra_base_path_between_nodes
+    dijkstra_base_path_between_nodes,
 )
 
 # ---------------------------
@@ -51,14 +60,20 @@ def _nodes_for_module(placement: Dict[str, object], m: str) -> List[Node]:
         return [n for n in v["nodes"] if n is not None]
     return []
 
+def _reachable_via_routehops(topo: Topology, s: Node, d: Node) -> bool:
+    """
+    Feasibility predicate consistent with evaluation.
+    Does not optimize latency. Just checks if route_hops_nodes can produce a path.
+    """
+    return bool(route_hops_nodes(topo, s.nid, d.nid))
+
 def _first_reachable_dst_in_order(
     topo: Topology,
     src: Node,
     dst_list: List[Node],
 ) -> Optional[Node]:
     for d in dst_list:
-        ms, _ = dijkstra_base_path_between_nodes(topo, src.nid, d.nid, float("inf"))
-        if (ms is not None) and math.isfinite(ms):
+        if _reachable_via_routehops(topo, src, d):
             return d
     return None
 
@@ -69,8 +84,7 @@ def _first_reachable_pair(
 ) -> Optional[Tuple[Node, Node]]:
     for s in src_candidates:
         for d in dst_candidates:
-            ms, _ = dijkstra_base_path_between_nodes(topo, s.nid, d.nid, float("inf"))
-            if (ms is not None) and math.isfinite(ms):
+            if _reachable_via_routehops(topo, s, d):
                 return (s, d)
     return None
 
@@ -79,6 +93,17 @@ def _best_latency_pair(
     src_candidates: List[Node],
     dst_candidates: List[Node],
 ) -> Optional[Tuple[Node, Node]]:
+    """
+    Lowest-Latency policy.
+    You can keep Dijkstra here, but if dijkstra and route_hops disagree you can still pick
+    something that later yields hops == [] in evaluation.
+
+    Two options:
+    A) keep Dijkstra but add a route_hops feasibility check (done below)
+    B) compute latency by enumerating route_hops and _hop_latency_ms (more expensive, also RNG-dependent)
+
+    This implementation does A, so it remains deterministic and fast.
+    """
     if not src_candidates or not dst_candidates:
         return None
     best = None  # (ms, s, d)
@@ -86,6 +111,9 @@ def _best_latency_pair(
         for d in dst_candidates:
             ms, _ = dijkstra_base_path_between_nodes(topo, s.nid, d.nid, float("inf"))
             if (ms is None) or (not math.isfinite(ms)):
+                continue
+            # ensure evaluation will also see a path
+            if not _reachable_via_routehops(topo, s, d):
                 continue
             ms = float(ms)
             if (best is None) or (ms < best[0]):
@@ -98,14 +126,11 @@ def _rr_reachable_dst(
     dst_list: List[Node],
     start_idx: int
 ) -> Optional[Node]:
-    tried = 0
     n = len(dst_list)
-    while tried < n:
+    for tried in range(n):
         d = dst_list[(start_idx + tried) % n]
-        ms, _ = dijkstra_base_path_between_nodes(topo, src.nid, d.nid, float("inf"))
-        if (ms is not None) and math.isfinite(ms):
+        if _reachable_via_routehops(topo, src, d):
             return d
-        tried += 1
     return None
 
 def _randomk_reachable_dst(
@@ -120,15 +145,10 @@ def _randomk_reachable_dst(
     dsts = dst_list[:]
     rng.shuffle(dsts)
     k = max(1, min(k, len(dsts)))
-    samples = dsts[:k]
-    reach = []
-    for d in samples:
-        ms, _ = dijkstra_base_path_between_nodes(topo, src.nid, d.nid, float("inf"))
-        if (ms is not None) and math.isfinite(ms):
-            reach.append(d)
-    if not reach:
-        return None
-    return rng.choice(reach)
+    for d in dsts[:k]:
+        if _reachable_via_routehops(topo, src, d):
+            return d
+    return None
 
 def _pick_pair(
     topo: Topology,
@@ -199,7 +219,7 @@ def e2e_metrics_for_stitch(
     rng: random.Random,
     task_profile_name: str,
     *,
-    greedy_objective: str = "latency",      # "latency" | "accuracy_first_fit" | "rr" | "random2"
+    greedy_objective: str = "latency",      # "latency" | "accuracy_first_fit" | "rr" | "random2" | "full-model"
     acc_min: Optional[float] = None,        # used for accuracy_first_fit (gate)
     rr_index: int = 0,
     rr_offset: int = 0,
@@ -227,6 +247,7 @@ def e2e_metrics_for_stitch(
                 "slo_ms": getattr(config, "SLO_MS_WORKFLOW", None),
                 "slo_excess_ms": float("inf"),
                 "slo_excess_pct": float("nan"),
+                "no_route_edges": 0,
             }
 
     # Candidate layers
@@ -247,6 +268,7 @@ def e2e_metrics_for_stitch(
                 "slo_ms": getattr(config, "SLO_MS_WORKFLOW", None),
                 "slo_excess_ms": float("inf"),
                 "slo_excess_pct": float("nan"),
+                "no_route_edges": 0,
             }
         layers.append(cand)
 
@@ -272,6 +294,7 @@ def e2e_metrics_for_stitch(
             "slo_ms": slo_wf,
             "slo_excess_ms": exc_ms,
             "slo_excess_pct": exc_pct,
+            "no_route_edges": 0,
         }
 
     # ---------- Select a concrete node chain ----------
@@ -297,6 +320,7 @@ def e2e_metrics_for_stitch(
             "slo_ms": getattr(config, "SLO_MS_WORKFLOW", None),
             "slo_excess_ms": float("inf"),
             "slo_excess_pct": float("nan"),
+            "no_route_edges": 0,
         }
     chosen[0], chosen[1] = pair
 
@@ -321,6 +345,7 @@ def e2e_metrics_for_stitch(
                 "slo_ms": getattr(config, "SLO_MS_WORKFLOW", None),
                 "slo_excess_ms": float("inf"),
                 "slo_excess_pct": float("nan"),
+                "no_route_edges": 0,
             }
         _, chosen[hop + 1] = pair
 
@@ -331,6 +356,7 @@ def e2e_metrics_for_stitch(
     link_mb_total    = 0.0
     hop_count_total  = 0
     per_stage: List[Dict] = []
+    no_route_edges   = 0
 
     # 1) compute times per module
     per_module_compute = []
@@ -351,8 +377,8 @@ def e2e_metrics_for_stitch(
         hop_count_total += seg_hops
 
         if not hops:
+            no_route_edges += 1
             net_latency_ms = float("inf")
-            # record stage with inf net; compute still valid
             per_stage.append({
                 "m_src": modules[i],
                 "m_dst": modules[i+1],
@@ -395,10 +421,10 @@ def e2e_metrics_for_stitch(
         "link_mb":        link_mb_total,
         "hop_count":      hop_count_total,
         "acc":            acc_val,
-        "per_stage":      per_stage,          # for per-stage SLO analysis upstream
+        "per_stage":      per_stage,
         "met_slo":        met,
         "slo_ms":         slo_wf,
         "slo_excess_ms":  exc_ms,
         "slo_excess_pct": exc_pct,
+        "no_route_edges": no_route_edges,
     }
-

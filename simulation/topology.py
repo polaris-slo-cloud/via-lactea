@@ -36,8 +36,14 @@ class Topology:
             self.nodes[node.nid] = node
             self.adj[node.nid] = []
 
-    def add_undirected_edge(self, u: str, v: str, kind: str,
-                            bw_range: Tuple[float, float], prop_range: Tuple[float, float]):
+    def add_undirected_edge(
+        self,
+        u: str,
+        v: str,
+        kind: str,
+        bw_range: Tuple[float, float],
+        prop_range: Tuple[float, float],
+    ):
         e1 = Edge(u=u, v=v, kind=kind, bw_range=bw_range, prop_range=prop_range)
         e2 = Edge(u=v, v=u, kind=kind, bw_range=bw_range, prop_range=prop_range)
         self.adj[u].append(e1)
@@ -54,10 +60,10 @@ def _link_ranges(kind: str) -> Dict[str, Tuple[float, float]]:
     lr = getattr(config, "LINK_RANGES", None)
     if not lr:
         lr = {
-            "isl":           {"bw": (1000000.0, 1000000.0),   "prop": (30.0, 40.0)},
-            "downlink":      {"bw": (300.0, 300.0),   "prop": (50.0, 60.0)},
-            "edge_backhaul": {"bw": (100.0, 100.0), "prop": (25.0, 35.0)},
-            "default":       {"bw": (10.0, 10.0),      "prop": (100.0, 100.0)},
+            "isl":           {"bw": (1000000.0, 1000000.0), "prop": (30.0, 40.0)},
+            "downlink":      {"bw": (300.0, 300.0),         "prop": (50.0, 60.0)},
+            "edge_backhaul": {"bw": (100.0, 100.0),         "prop": (25.0, 35.0)},
+            "default":       {"bw": (10.0, 10.0),           "prop": (100.0, 100.0)},
         }
         setattr(config, "LINK_RANGES", lr)
     return lr.get(kind, lr["default"])
@@ -65,7 +71,8 @@ def _link_ranges(kind: str) -> Dict[str, Tuple[float, float]]:
 # -------------------------
 # Builders
 # -------------------------
-def build_topology_from_json(path: str = "resources/topo_500.fixed.json") -> Topology:
+
+def build_topology_from_json(path: str = "../resources/topo_2000.json") -> Topology:
     """
     Build a topology from a Stardust JSON snapshot.
 
@@ -82,30 +89,24 @@ def build_topology_from_json(path: str = "resources/topo_500.fixed.json") -> Top
 
     topo = Topology()
 
-    # 1) nodes
     for sat in data.get("Satellites", []):
         topo.add_node(Node(nid=sat["Name"], kind="sat"))
 
     for gs in data.get("Grounds", []):
-        # treat ground stations as edge nodes for compute profiles
         topo.add_node(Node(nid=gs["Name"], kind="edge"))
 
     sat_count = len(data.get("Satellites", []))
     edge_count = len(data.get("Grounds", []))
 
-    config.NODE_COUNTS = {
-        "sat": sat_count,
-        "edge": edge_count,
-        "cloud": 1,
-    }
+    config.NODE_COUNTS = {"sat": sat_count, "edge": edge_count, "cloud": 1}
+
     links = data.get("Links", [])
     states = data.get("States", [])
     if not states:
         return topo
 
-    state = states[0]  # single snapshot in time
+    state = states[0]
 
-    # collect all link indices that are actually established in this snapshot
     active_link_indices: Set[int] = set()
     for ns in state.get("NodeStates", []):
         for idx in ns.get("Established", []):
@@ -114,7 +115,6 @@ def build_topology_from_json(path: str = "resources/topo_500.fixed.json") -> Top
     isl_lr = _link_ranges("isl")
     dl_lr = _link_ranges("downlink")
 
-    # avoid duplicate undirected edges
     added_pairs: Set[Tuple[str, str]] = set()
 
     for idx in active_link_indices:
@@ -125,12 +125,12 @@ def build_topology_from_json(path: str = "resources/topo_500.fixed.json") -> Top
         v = link["NodeName2"]
         if u == v:
             continue
+
         key = (u, v) if u <= v else (v, u)
         if key in added_pairs:
             continue
         added_pairs.add(key)
 
-        # simple classification: sat-sat is ISL, else downlink
         if u.startswith("STARLINK") and v.startswith("STARLINK"):
             kind = "isl"
             bw_range = isl_lr["bw"]
@@ -144,15 +144,16 @@ def build_topology_from_json(path: str = "resources/topo_500.fixed.json") -> Top
 
     return topo
 
+
 def build_topology(
     sats_per_ring: int,
     num_rings: int,
     cloud_count: int,
     edge_count: int,
     *,
-    isl_neighbor_span: int = 1,          # neighbors +/- span along each ring
-    gateways_per_ring: int = 2,          # satellites per ring that have downlink to cloud(s)
-    inter_ring_links: bool = True,       # connect same index across adjacent rings
+    isl_neighbor_span: int = 1,
+    gateways_per_ring: int = 2,
+    inter_ring_links: bool = True,
 ) -> Topology:
     """
     Build a concrete multi-ring satellite topology + cloud + edge gateways.
@@ -163,7 +164,6 @@ def build_topology(
     """
     topo = Topology()
 
-    # Create nodes
     for r in range(num_rings):
         for i in range(sats_per_ring):
             topo.add_node(Node(nid=f"sat_r{r}_i{i}", kind="sat"))
@@ -172,12 +172,10 @@ def build_topology(
     for k in range(edge_count):
         topo.add_node(Node(nid=f"edge{k}", kind="edge"))
 
-    # Ranges
     isl_lr = _link_ranges("isl")
     dl_lr  = _link_ranges("downlink")
     eb_lr  = _link_ranges("edge_backhaul")
 
-    # Ring ISLs (wrap-around), +/- neighbor_span
     for r in range(num_rings):
         for i in range(sats_per_ring):
             u = f"sat_r{r}_i{i}"
@@ -187,7 +185,6 @@ def build_topology(
                 topo.add_undirected_edge(u, v1, "isl", isl_lr["bw"], isl_lr["prop"])
                 topo.add_undirected_edge(u, v2, "isl", isl_lr["bw"], isl_lr["prop"])
 
-    # Inter-ring ISLs (same index between adjacent rings)
     if inter_ring_links and num_rings > 1:
         for r in range(num_rings - 1):
             for i in range(sats_per_ring):
@@ -195,18 +192,15 @@ def build_topology(
                 v = f"sat_r{r+1}_i{i}"
                 topo.add_undirected_edge(u, v, "isl", isl_lr["bw"], isl_lr["prop"])
 
-    # Choose gateways per ring → connect to all clouds (or a subset)
     for r in range(num_rings):
         step = max(1, sats_per_ring // max(1, gateways_per_ring))
         gateway_indices = [(g * step) % sats_per_ring for g in range(gateways_per_ring)]
         for gi in gateway_indices:
             s = f"sat_r{r}_i{gi}"
-            # connect satellite gateway to every cloud (could limit in config)
             for k in range(cloud_count):
                 c = f"cloud{k}"
                 topo.add_undirected_edge(s, c, "downlink", dl_lr["bw"], dl_lr["prop"])
 
-    # Edge backhaul: connect each edge to the nearest cloud (simple round-robin)
     for k in range(edge_count):
         e = f"edge{k}"
         c = f"cloud{k % cloud_count}" if cloud_count > 0 else None
@@ -227,14 +221,11 @@ def _edge_available(edge: Edge) -> bool:
     lo, hi = edge.bw_range
     return float(hi) > 0.0
 
-import math, heapq
-from typing import Dict, List, Tuple
-
 def dijkstra_base_path_between_nodes(
     topo: Topology,
     src: str,
     dst: str,
-    slo_ms: Optional[float] = None,   # only used to drop single edges
+    slo_ms: Optional[float] = None,
 ) -> Tuple[float, List[str]]:
     """
     Shortest path (propagation-only). Edges with bw_hi <= 0 are skipped.
@@ -245,18 +236,21 @@ def dijkstra_base_path_between_nodes(
     if src == dst:
         return 0.0, [src]
 
+    if src not in topo.nodes or dst not in topo.nodes:
+        return math.inf, []
+
     dist: Dict[str, float] = {nid: math.inf for nid in topo.nodes}
-    prev: Dict[str, str]   = {}
-    seen: Dict[str, bool]  = {nid: False for nid in topo.nodes}
+    prev: Dict[str, str] = {}
+    seen: Set[str] = set()
 
     dist[src] = 0.0
     pq: List[Tuple[float, str]] = [(0.0, src)]
 
     while pq:
         d, u = heapq.heappop(pq)
-        if seen[u]:
+        if u in seen:
             continue
-        seen[u] = True
+        seen.add(u)
 
         if u == dst:
             path = [dst]
@@ -273,8 +267,7 @@ def dijkstra_base_path_between_nodes(
                 continue
             edge_cost = _edge_prop_mid(e)
 
-            # Drop only edges that violate the SLO individually
-            if (slo_ms is not None) and (edge_cost > slo_ms):
+            if (slo_ms is not None) and (edge_cost > float(slo_ms)):
                 continue
 
             w = d + edge_cost
@@ -289,19 +282,59 @@ def dijkstra_base_path_between_nodes(
 # Runtime Dijkstra (payload-aware)
 # -------------------------
 
+_BW_EPS_Mbps = float(getattr(config, "BW_EPS_Mbps", 1e-6))
+if (not math.isfinite(_BW_EPS_Mbps)) or _BW_EPS_Mbps <= 0.0:
+    _BW_EPS_Mbps = 1e-6
+
+_HUGE_HOP_MS = float(getattr(config, "HUGE_HOP_MS", 1e12))
+if (not math.isfinite(_HUGE_HOP_MS)) or _HUGE_HOP_MS <= 0.0:
+    _HUGE_HOP_MS = 1e12
+
 def _sample_link_state(edge: Edge, rng: random.Random) -> Tuple[float, float]:
-    bw = rng.uniform(float(edge.bw_range[0]), float(edge.bw_range[1]))
-    prop = rng.uniform(float(edge.prop_range[0]), float(edge.prop_range[1]))
-    return bw, prop
+    """
+    Sample bandwidth and propagation.
+
+    Critical:
+    - clamp bandwidth away from 0 to prevent inf explosions on long paths
+    - clamp propagation to >= 0 and finite
+    """
+    lo_bw = float(edge.bw_range[0])
+    hi_bw = float(edge.bw_range[1])
+    lo_p  = float(edge.prop_range[0])
+    hi_p  = float(edge.prop_range[1])
+
+    bw = rng.uniform(lo_bw, hi_bw)
+    prop = rng.uniform(lo_p, hi_p)
+
+    if (bw is None) or (not math.isfinite(float(bw))) or float(bw) <= 0.0:
+        bw = _BW_EPS_Mbps
+    if (prop is None) or (not math.isfinite(float(prop))) or float(prop) < 0.0:
+        prop = 0.0
+
+    return float(bw), float(prop)
 
 def _hop_latency_ms(edge: Edge, payload_mb: float, rng: random.Random) -> float:
+    """
+    Compute per-hop latency.
+
+    Important:
+    - never return inf/nan, because that poisons aggregation (NaN means empty slice)
+    - if something goes wrong, return a large finite penalty
+    """
     bw_mbps, prop_ms = _sample_link_state(edge, rng)
-    if bw_mbps <= 0.0:
-        return float("inf")
-    tx_ms = (payload_mb / (bw_mbps / 8.0)) * 1000.0
+
+    # bw_mbps is clamped in _sample_link_state
+    tx_ms = (float(payload_mb) / (float(bw_mbps) / 8.0)) * 1000.0
+
     j_lo, j_hi = getattr(config, "HOP_JITTER_MS", (0.0, 10.0))
     jitter = rng.uniform(float(j_lo), float(j_hi))
-    return tx_ms + prop_ms + jitter
+
+    out = float(tx_ms) + float(prop_ms) + float(jitter)
+    if not math.isfinite(out):
+        return _HUGE_HOP_MS
+    if out < 0.0:
+        return 0.0
+    return out
 
 def dijkstra_latency_between_nodes(
     topo: Topology, src: str, dst: str, payload_mb: float, rng: random.Random
@@ -309,20 +342,27 @@ def dijkstra_latency_between_nodes(
     """Runtime shortest path with payload-aware edge costs."""
     if src == dst:
         return 0.0
+    if src not in topo.nodes or dst not in topo.nodes:
+        return float("inf")
+
     dist: Dict[str, float] = {nid: float("inf") for nid in topo.nodes}
     dist[src] = 0.0
     pq: List[Tuple[float, str]] = [(0.0, src)]
-    seen: Dict[str, bool] = {nid: False for nid in topo.nodes}
+    seen: Set[str] = set()
 
     while pq:
         d, u = heapq.heappop(pq)
-        if seen[u]:
+        if u in seen:
             continue
-        seen[u] = True
+        seen.add(u)
         if u == dst:
             return d
         for e in topo.neighbors(u):
-            cost = _hop_latency_ms(e, payload_mb, rng)
+            if not _edge_available(e):
+                continue
+            cost = _hop_latency_ms(e, float(payload_mb), rng)
+            if not math.isfinite(cost):
+                cost = _HUGE_HOP_MS
             nd = d + cost
             if nd < dist[e.v]:
                 dist[e.v] = nd
@@ -337,16 +377,21 @@ def _dijkstra_path(topo: Topology, src: str, dst: str, weight_fn) -> Optional[Li
     """Generic Dijkstra that also reconstructs path of node IDs using weight_fn(edge)->cost."""
     if src == dst:
         return [src]
+    if src not in topo.nodes or dst not in topo.nodes:
+        return None
+
     dist: Dict[str, float] = {nid: float("inf") for nid in topo.nodes}
     prev: Dict[str, Optional[str]] = {nid: None for nid in topo.nodes}
     dist[src] = 0.0
+
     pq: List[Tuple[float, str]] = [(0.0, src)]
-    seen: Dict[str, bool] = {nid: False for nid in topo.nodes}
+    seen: Set[str] = set()
+
     while pq:
         d, u = heapq.heappop(pq)
-        if seen[u]:
+        if u in seen:
             continue
-        seen[u] = True
+        seen.add(u)
         if u == dst:
             break
         for e in topo.neighbors(u):
@@ -358,39 +403,53 @@ def _dijkstra_path(topo: Topology, src: str, dst: str, weight_fn) -> Optional[Li
                 dist[e.v] = nd
                 prev[e.v] = u
                 heapq.heappush(pq, (nd, e.v))
+
     if not math.isfinite(dist[dst]):
         return None
-    # reconstruct
-    path = []
-    cur = dst
+
+    # reconstruct safely
+    path: List[str] = []
+    cur: Optional[str] = dst
+    visited: Set[str] = set()
     while cur is not None:
+        if cur in visited:
+            return None
+        visited.add(cur)
         path.append(cur)
+        if cur == src:
+            break
         cur = prev[cur]
+
+    if not path or path[-1] != src:
+        return None
+
     path.reverse()
     return path
 
 def route_hops_nodes(topo: Topology, src: str, dst: str, rng: Optional[random.Random] = None) -> List[Edge]:
     """
-    Materialize the hop sequence (as Edge objects) along the *deterministic* base path.
+    Materialize the hop sequence (as Edge objects) along the deterministic base path.
     (You can switch to runtime weight if you want stochastic paths.)
     """
     def base_weight(e: Edge) -> float:
-        # unavailable links skipped
-        lo, hi = e.bw_range
-        if hi <= 0.0:
+        if not _edge_available(e):
             return float("inf")
         return _edge_prop_mid(e)
 
     path = _dijkstra_path(topo, src, dst, base_weight)
     if path is None or len(path) < 2:
         return []
+
     hops: List[Edge] = []
     for u, v in zip(path[:-1], path[1:]):
-        # find the matching edge record
+        found = False
         for e in topo.neighbors(u):
             if e.v == v:
                 hops.append(e)
+                found = True
                 break
+        if not found:
+            return []
     return hops
 
 def expected_hops_between_nodes(topo: Topology, src: str, dst: str) -> int:
@@ -432,26 +491,19 @@ def _filtered_topology_view(topo: Topology, per_edge_prop_cap_ms: Optional[float
     This ensures SLO feasibility is enforced at the edge level before path search.
     """
     ft = Topology()
-    # copy nodes
-    for nid, node in topo.nodes.items():
+    for _nid, node in topo.nodes.items():
         ft.add_node(Node(nid=node.nid, kind=node.kind))
 
     seen_pairs: Set[Tuple[str, str]] = set()
-    for u, edges in topo.adj.items():
+    for _u, edges in topo.adj.items():
         for e in edges:
-            # undirected guard: only add once per {u,v}
             key = (e.u, e.v) if e.u <= e.v else (e.v, e.u)
             if key in seen_pairs:
                 continue
             if not _edge_available(e):
                 continue
-            if per_edge_prop_cap_ms is not None and _edge_prop_mid(e) > per_edge_prop_cap_ms:
+            if per_edge_prop_cap_ms is not None and _edge_prop_mid(e) > float(per_edge_prop_cap_ms):
                 continue
             ft.add_undirected_edge(e.u, e.v, e.kind, e.bw_range, e.prop_range)
             seen_pairs.add(key)
     return ft
-
-
-
-
-
