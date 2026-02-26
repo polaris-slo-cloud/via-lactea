@@ -28,6 +28,7 @@ SOFT_W_ACC=0.5
 # Results directory
 BASE_RESULTS_DIR = "experiments/results"
 RESULT_DIR = None  # or set to a fixed dir string
+DATASET = "wildfire"
 
 SATS_PER_RING = 10
 NUM_RINGS     = 2
@@ -71,10 +72,7 @@ TASK_PROFILES_FOR_WORKFLOW = ["extract-frames", "object-det", "prepare-ds"]
 RR_START_OFFSET = 0
 
 def ensure_results_dir() -> str:
-    dataset = getattr(__import__(__name__), "DATASET", "wildfire")
-
     run_folder = f"sat{NODE_COUNTS['sat']}_edge{NODE_COUNTS['edge']}_cloud{NODE_COUNTS['cloud']}_seed{SEED}"
-
-    outdir = os.path.join(BASE_RESULTS_DIR, dataset, run_folder)
+    outdir = os.path.join(BASE_RESULTS_DIR, DATASET, run_folder)
     os.makedirs(outdir, exist_ok=True)
     return outdir
