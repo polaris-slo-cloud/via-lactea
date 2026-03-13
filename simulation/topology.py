@@ -7,7 +7,7 @@ import heapq
 import random
 
 from . import config
-from .profiles import TASK_PROFILES, OUTPUT_SIZES_MB
+from . import profiles
 
 # -------------------------
 # Data structures
@@ -72,7 +72,7 @@ def _link_ranges(kind: str) -> Dict[str, Tuple[float, float]]:
 # Builders
 # -------------------------
 
-def build_topology_from_json(path: str = "../resources/topo_2000.json") -> Topology:
+def build_topology_from_json(path: str = "resources/topo_250_new.json") -> Topology:
     """
     Build a topology from a Stardust JSON snapshot.
 
@@ -470,7 +470,7 @@ def _sample_runtime_lognormal(mean_ms: float, cv: float, rng: random.Random) -> 
     return rng.lognormvariate(mu, sigma)
 
 def compute_time_ms(module: str, node: Node, rng: random.Random, task_profile_name: str) -> float:
-    prof = TASK_PROFILES.get(task_profile_name, TASK_PROFILES["object-det"])
+    prof = profiles.TASK_PROFILES.get(task_profile_name, profiles.TASK_PROFILES["object-det"])
     is_prefix = module.startswith("resnet_")
     bucket = "prefix" if is_prefix else "suffix"
     base_mean = prof[node.kind][bucket]
@@ -478,7 +478,7 @@ def compute_time_ms(module: str, node: Node, rng: random.Random, task_profile_na
     return _sample_runtime_lognormal(float(base_mean), float(cv), rng)
 
 def module_output_mb(module: str) -> float:
-    return float(OUTPUT_SIZES_MB.get(module, 0.0))
+    return float(profiles.OUTPUT_SIZES_MB.get(module, 0.0))
 
 # ---------- helper: make a filtered topology view ----------
 

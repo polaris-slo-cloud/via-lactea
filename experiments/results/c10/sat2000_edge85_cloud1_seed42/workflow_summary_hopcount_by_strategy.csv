@@ -1,3 +1,0 @@
-strategy,mean,median,p95,p99
-Round-Robin,400.0,400.0,400.0,400.0
-SLO-first,30.0,30.0,30.0,30.0

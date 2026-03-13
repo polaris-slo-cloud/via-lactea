@@ -1,3 +1,0 @@
-run,stitch_id,strategy,latency_ms,acc,payload_mb,link_mb,payload_mb_cached,link_mb_cached,hop_count,selection_time_ms,ssp_calls,met_slo,stages_met,met_task_slo_all,stages_met_task_slo,stages,profiles
-0,6,SLO-first,1720.1649972556006,83.94,3.0146484375,6.34033203125,0.0,0.0,30,491775.1433740001,348,True,3,True,3,3,extract-frames|object-det|prepare-ds
-0,3,Round-Robin,16400.001449958167,84.33,3.158203125,83.1181640625,3.158203125,83.1181640625,400,79.53295900000512,0,False,0,False,0,3,extract-frames|object-det|prepare-ds

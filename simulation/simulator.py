@@ -29,7 +29,7 @@ from .selection import (
     full_model_stitch,
 )
 from .placement import assign_modules_to_nodes, build_local_allowed_pairs_all_stitches
-from .profiles import CANDIDATE_STITCHES
+from . import profiles
 from .topology import Topology
 
 
@@ -39,7 +39,7 @@ from .topology import Topology
 
 def _all_modules() -> List[str]:
     """All modules that can appear in any stitch."""
-    return sorted({m for s in CANDIDATE_STITCHES.values() for m in s["modules"]})
+    return sorted({m for s in profiles.CANDIDATE_STITCHES.values() for m in s["modules"]})
 
 
 def _slo_fields(total_ms: float, slo_ms: Optional[float]):

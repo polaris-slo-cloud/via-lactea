@@ -7,6 +7,8 @@ New:
 - RUN MODE switch via config.RUN_MODE / VL_RUN_MODE / --mode {task,workflow,both}
 - Prints & saves cached metrics: payload_mb_cached, link_mb_cached
 - Also saves combined latency+accuracy SLO violation percentages per strategy
+- Adds workflow end-to-end time including selection overhead
+- Adds workflow throughput including selection overhead
 """
 
 import os
@@ -17,7 +19,7 @@ import numpy as np
 import pandas as pd
 from typing import Optional, Iterable, List, Dict, Tuple, Callable
 
-from simulation import config
+from simulation import config, profiles
 from simulation.topology import build_topology, build_topology_from_json
 from simulation.simulator import simulate_task, simulate_workflow, simulate_task_all_stitches
 from simulation.stats_io import (
@@ -74,6 +76,75 @@ def _hinge_pow(x: pd.Series, p: float) -> pd.Series:
     return x.pow(p)
 
 
+def add_workflow_e2e_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Adds end-to-end workflow time including selector overhead.
+
+    New columns:
+    - e2e_time_ms = latency_ms + selection_time_ms
+    - throughput_wf_per_s = 1000 / e2e_time_ms
+    """
+    out = df.copy()
+
+    lat = pd.to_numeric(out["latency_ms"], errors="coerce")
+    lat = lat.replace([np.inf, -np.inf], np.nan)
+
+    if "selection_time_ms" in out.columns:
+        sel = pd.to_numeric(out["selection_time_ms"], errors="coerce").fillna(0.0)
+        sel = sel.replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    else:
+        sel = 0.0
+
+    out["e2e_time_ms"] = lat + sel
+
+    out["throughput_wf_per_s"] = np.where(
+        out["e2e_time_ms"].notna() & (out["e2e_time_ms"] > 0),
+        1000.0 / out["e2e_time_ms"],
+        np.nan,
+    )
+
+    return out
+
+
+def workflow_throughput_summary(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Aggregate throughput by strategy using total E2E time.
+
+    throughput_wf_per_s = completed_runs / total_e2e_time_seconds
+                        = 1000 * completed_runs / total_e2e_time_ms
+    """
+    x = df.copy()
+
+    if "e2e_time_ms" not in x.columns:
+        x = add_workflow_e2e_columns(x)
+
+    t = pd.to_numeric(x["e2e_time_ms"], errors="coerce")
+    t = t.replace([np.inf, -np.inf], np.nan)
+    x["e2e_time_ms"] = t
+
+    x = x[x["e2e_time_ms"].notna() & (x["e2e_time_ms"] > 0)].copy()
+
+    if x.empty:
+        return pd.DataFrame(columns=[
+            "strategy",
+            "completed_runs",
+            "total_e2e_time_ms",
+            "throughput_wf_per_s",
+        ])
+
+    out = (
+        x.groupby("strategy", dropna=False)
+         .agg(
+             completed_runs=("e2e_time_ms", "count"),
+             total_e2e_time_ms=("e2e_time_ms", "sum"),
+         )
+         .reset_index()
+    )
+
+    out["throughput_wf_per_s"] = 1000.0 * out["completed_runs"] / out["total_e2e_time_ms"]
+    return out
+
+
 # -----------------------------------------------------------------------------
 # Task / workflow sections
 # -----------------------------------------------------------------------------
@@ -115,14 +186,7 @@ def _run_task_section(topo, outdir: str):
     print("TASK SLO violation rate (% of task requests) [based on SLO_MS_TASK]:")
     print(slo_violation_rates_task(task_df_all).to_string(index=False))
 
-    # --- NEW: combined latency+accuracy SLO violation (per strategy) ---
-    slo_l = getattr(config, "SLO_MS_TASK", None)
-    slo_a = getattr(config, "SLO_ACC_MIN", None)
-    wL = float(getattr(config, "SOFT_W_LAT", 1.0))
-    wA = float(getattr(config, "SOFT_W_ACC", 1.0))
-    pL = float(getattr(config, "SOFT_P_LAT", 2.0))
-    pA = float(getattr(config, "SOFT_P_ACC", 2.0))
-
+    # --- combined latency+accuracy SLO violation (per strategy) ---
     comb = combined_slo_violation_by_strategy(
         task_df_all,
         slo_l_ms=getattr(config, "SLO_MS_TASK", None),
@@ -159,35 +223,51 @@ def _run_task_section(topo, outdir: str):
     print("SLO violation rate by profile (% of task requests):")
     print(slo_violation_rates_task_by_profile(task_df_all).to_string(index=False))
 
-    # Save task CSVs (existing)
+    # Save task CSVs
     save_csv(task_df_all, outdir, "task_runs_all.csv")
     save_csv(agg_stats_by_profile(task_df_all, "latency_ms"), outdir, "task_summary_latency_by_strategy_profile.csv")
     save_csv(agg_stats_by_profile(task_df_all, "payload_mb"), outdir, "task_summary_payload_by_strategy_profile.csv")
-    save_csv(agg_stats_by_profile(task_df_all, "link_mb"),    outdir, "task_summary_link_by_strategy_profile.csv")
-    save_csv(agg_stats_by_profile(task_df_all, "hop_count"),  outdir, "task_summary_hopcount_by_strategy_profile.csv")
+    save_csv(agg_stats_by_profile(task_df_all, "link_mb"), outdir, "task_summary_link_by_strategy_profile.csv")
+    save_csv(agg_stats_by_profile(task_df_all, "hop_count"), outdir, "task_summary_hopcount_by_strategy_profile.csv")
     save_csv(accuracy_stats_by_profile(task_df_all), outdir, "task_accuracy_by_strategy_profile.csv")
     save_csv(slo_violation_rates_task_by_profile(task_df_all), outdir, "task_slo_violation_by_profile.csv")
 
-    # Save new cached task CSVs
+    # Save cached task CSVs
     if "payload_mb_cached" in task_df_all.columns:
-        save_csv(agg_stats_by_profile(task_df_all, "payload_mb_cached"), outdir, "task_summary_payload_cached_by_strategy_profile.csv")
+        save_csv(
+            agg_stats_by_profile(task_df_all, "payload_mb_cached"),
+            outdir,
+            "task_summary_payload_cached_by_strategy_profile.csv"
+        )
     if "link_mb_cached" in task_df_all.columns:
-        save_csv(agg_stats_by_profile(task_df_all, "link_mb_cached"), outdir, "task_summary_link_cached_by_strategy_profile.csv")
+        save_csv(
+            agg_stats_by_profile(task_df_all, "link_mb_cached"),
+            outdir,
+            "task_summary_link_cached_by_strategy_profile.csv"
+        )
 
-    # Save new selector CSVs
+    # Save selector / SSSP CSVs
     if "selection_time_ms" in task_df_all.columns:
-        save_csv(agg_stats_by_profile(task_df_all, "selection_time_ms"), outdir, "task_summary_selector_time_by_strategy_profile.csv")
+        save_csv(
+            agg_stats_by_profile(task_df_all, "selection_time_ms"),
+            outdir,
+            "task_summary_selector_time_by_strategy_profile.csv"
+        )
     if "ssp_calls" in task_df_all.columns:
-        save_csv(agg_stats_by_profile(task_df_all, "ssp_calls"), outdir, "task_summary_ssp_calls_by_strategy_profile.csv")
+        save_csv(
+            agg_stats_by_profile(task_df_all, "ssp_calls"),
+            outdir,
+            "task_summary_ssp_calls_by_strategy_profile.csv"
+        )
 
     # ---- TASK wide joined summary with safe prefixes ----
     keys = ["profile", "strategy"]
     frames = [
         _prefixed(agg_stats_by_profile(task_df_all, "latency_ms"), keys, "latency"),
-        _prefixed(accuracy_stats_by_profile(task_df_all),          keys, "acc"),
+        _prefixed(accuracy_stats_by_profile(task_df_all), keys, "acc"),
         _prefixed(agg_stats_by_profile(task_df_all, "payload_mb"), keys, "payload"),
-        _prefixed(agg_stats_by_profile(task_df_all, "link_mb"),    keys, "link"),
-        _prefixed(agg_stats_by_profile(task_df_all, "hop_count"),  keys, "hops"),
+        _prefixed(agg_stats_by_profile(task_df_all, "link_mb"), keys, "link"),
+        _prefixed(agg_stats_by_profile(task_df_all, "hop_count"), keys, "hops"),
     ]
 
     if "payload_mb_cached" in task_df_all.columns:
@@ -218,6 +298,9 @@ def _run_workflow_section(topo, outdir: str):
         stage_profiles=config.TASK_PROFILES_FOR_WORKFLOW,
     )
 
+    # Add end-to-end workflow time including selector overhead
+    wf_df = add_workflow_e2e_columns(wf_df)
+
     base_cols = ["latency_ms", "payload_mb", "link_mb", "hop_count"]
     cached_cols = ["payload_mb_cached", "link_mb_cached"]
 
@@ -235,8 +318,15 @@ def _run_workflow_section(topo, outdir: str):
         print("Selector runtime (ms):")
         print(agg_stats(wf_df, "selection_time_ms").to_string(index=False))
 
-    # --- NEW: combined latency+accuracy SLO violation (per strategy) ---
-    slo_l = getattr(config, "SLO_MS_STAGE", None)   # workflow uses stage SLO
+    print("Workflow end-to-end time including selector overhead (ms):")
+    print(agg_stats(wf_df, "e2e_time_ms").to_string(index=False))
+
+    wf_thr = workflow_throughput_summary(wf_df)
+    print("Workflow throughput including selection overhead (workflows/s):")
+    print(wf_thr.to_string(index=False))
+
+    # --- combined latency+accuracy SLO violation (per strategy) ---
+    slo_l = getattr(config, "SLO_MS_STAGE", None)
     slo_a = getattr(config, "SLO_ACC_MIN", None)
     wL = float(getattr(config, "SOFT_W_LAT", 1.0))
     wA = float(getattr(config, "SOFT_W_ACC", 1.0))
@@ -247,41 +337,66 @@ def _run_workflow_section(topo, outdir: str):
         wf_df,
         slo_l_ms=slo_l,
         slo_a_min=slo_a,
-        wL=wL, wA=wA, pL=pL, pA=pA,
+        wL=wL,
+        wA=wA,
+        pL=pL,
+        pA=pA,
     )
     print("WORKFLOW combined (lat+acc) SLO violation (% and magnitudes):")
     print(comb.to_string(index=False))
     save_csv(comb, outdir, "workflow_combined_slo_violation_by_strategy.csv")
 
-    # Save workflow CSVs (existing)
+    # Save workflow CSVs
     save_csv(wf_df, outdir, "workflow_runs.csv")
     save_csv(stitch_stats(wf_df), outdir, "workflow_runs_stitches.csv")
     save_csv(agg_stats(wf_df, "latency_ms"), outdir, "workflow_summary_latency_by_strategy.csv")
     save_csv(agg_stats(wf_df, "payload_mb"), outdir, "workflow_summary_payload_by_strategy.csv")
-    save_csv(agg_stats(wf_df, "link_mb"),    outdir, "workflow_summary_link_by_strategy.csv")
-    save_csv(agg_stats(wf_df, "hop_count"),  outdir, "workflow_summary_hopcount_by_strategy.csv")
+    save_csv(agg_stats(wf_df, "link_mb"), outdir, "workflow_summary_link_by_strategy.csv")
+    save_csv(agg_stats(wf_df, "hop_count"), outdir, "workflow_summary_hopcount_by_strategy.csv")
     save_csv(accuracy_stats(wf_df), outdir, "workflow_accuracy_by_strategy.csv")
 
-    # Save new cached workflow CSVs
-    if "payload_mb_cached" in wf_df.columns:
-        save_csv(agg_stats(wf_df, "payload_mb_cached"), outdir, "workflow_summary_payload_cached_by_strategy.csv")
-    if "link_mb_cached" in wf_df.columns:
-        save_csv(agg_stats(wf_df, "link_mb_cached"), outdir, "workflow_summary_link_cached_by_strategy.csv")
+    # New workflow-only E2E files
+    save_csv(agg_stats(wf_df, "e2e_time_ms"), outdir, "workflow_summary_e2e_time_by_strategy.csv")
+    save_csv(wf_thr, outdir, "workflow_throughput_e2e_by_strategy.csv")
 
-    # Save new selector CSVs
+    # Save cached workflow CSVs
+    if "payload_mb_cached" in wf_df.columns:
+        save_csv(
+            agg_stats(wf_df, "payload_mb_cached"),
+            outdir,
+            "workflow_summary_payload_cached_by_strategy.csv"
+        )
+    if "link_mb_cached" in wf_df.columns:
+        save_csv(
+            agg_stats(wf_df, "link_mb_cached"),
+            outdir,
+            "workflow_summary_link_cached_by_strategy.csv"
+        )
+
+    # Save selector / SSSP CSVs
     if "selection_time_ms" in wf_df.columns:
-        save_csv(agg_stats(wf_df, "selection_time_ms"), outdir, "workflow_summary_selector_time_by_strategy.csv")
+        save_csv(
+            agg_stats(wf_df, "selection_time_ms"),
+            outdir,
+            "workflow_summary_selector_time_by_strategy.csv"
+        )
     if "ssp_calls" in wf_df.columns:
-        save_csv(agg_stats(wf_df, "ssp_calls"), outdir, "workflow_summary_ssp_calls_by_strategy.csv")
+        save_csv(
+            agg_stats(wf_df, "ssp_calls"),
+            outdir,
+            "workflow_summary_ssp_calls_by_strategy.csv"
+        )
 
     # ---- WORKFLOW wide joined summary with safe prefixes ----
     keys_wf = ["strategy"]
     frames_wf = [
         _prefixed(agg_stats(wf_df, "latency_ms"), keys_wf, "latency"),
-        _prefixed(accuracy_stats(wf_df),          keys_wf, "acc"),
+        _prefixed(accuracy_stats(wf_df), keys_wf, "acc"),
         _prefixed(agg_stats(wf_df, "payload_mb"), keys_wf, "payload"),
-        _prefixed(agg_stats(wf_df, "link_mb"),    keys_wf, "link"),
-        _prefixed(agg_stats(wf_df, "hop_count"),  keys_wf, "hops"),
+        _prefixed(agg_stats(wf_df, "link_mb"), keys_wf, "link"),
+        _prefixed(agg_stats(wf_df, "hop_count"), keys_wf, "hops"),
+        _prefixed(agg_stats(wf_df, "e2e_time_ms"), keys_wf, "e2e_time"),
+        _prefixed(wf_thr, keys_wf, "throughput_e2e"),
     ]
 
     if "payload_mb_cached" in wf_df.columns:
@@ -312,14 +427,15 @@ def main():
     )
     parser.add_argument(
         "--topo",
-        default="../resources/topo_250.json",
+        default="resources/topo_250_new.json",
         help="Path to Stardust topology snapshot JSON (e.g., resources/topo_3000.json)",
     )
     args, _ = parser.parse_known_args()
 
     run_mode = _resolve_run_mode(args.mode)
     config.DATASET = args.dataset
-    # -------- BUILD THE GRAPH --------
+    profiles.set_dataset(args.dataset)
+
     topo = build_topology_from_json(args.topo)
     outdir = config.ensure_results_dir()
     print(f"[info] RUN_MODE = {run_mode}")

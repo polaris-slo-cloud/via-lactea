@@ -12,10 +12,10 @@ echo "" | tee -a $LOG_FILE
 
 TOTAL_START=$(date +%s)
 
-for DATASET in "${DATASETS[@]}"; do
-  for SIZE in "${TOPO_SIZES[@]}"; do
+for SIZE in "${TOPO_SIZES[@]}"; do
+  for DATASET in "${DATASETS[@]}"; do
 
-    TOPO="resources/topo_${SIZE}.json"
+    TOPO="resources/topo_${SIZE}_new.json"
 
     echo "----------------------------------------" | tee -a $LOG_FILE
     echo "Dataset: $DATASET | Topology: $SIZE" | tee -a $LOG_FILE

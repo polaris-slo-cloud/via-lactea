@@ -49,7 +49,7 @@ def _normalize_dataset(name: Optional[str]) -> str:
     return n
 
 # Public: current dataset name
-DATASET_NAME: str = _normalize_dataset(getattr(config, "DATASET", None) or os.getenv("VIA_LACTEA_DATASET"))
+DATASET_NAME: str = _normalize_dataset(getattr(config, "DATASET", None))
 
 def set_dataset(name: str) -> None:
     """
@@ -147,6 +147,7 @@ def _dataset_acc_table() -> Dict[int, float]:
 
 def _build_candidate_stitches() -> Dict[int, Dict]:
     acc = _dataset_acc_table()
+    print(f"Dataset {DATASET_NAME} has {len(acc)} entries.")
 
     # modules are dataset-invariant; only accuracy changes
     return {

@@ -15,7 +15,7 @@ import math, random
 from typing import Dict, List, Optional, Tuple
 
 from . import config
-from .profiles import TASK_PROFILES, OUTPUT_SIZES_MB, CANDIDATE_STITCHES
+from . import profiles
 from .topology import (
     Node, _hop_latency_ms, route_hops_nodes, Topology,
     dijkstra_base_path_between_nodes,
@@ -34,7 +34,7 @@ def _sample_runtime_lognormal(mean_ms: float, cv: float, rng: random.Random) -> 
     return rng.lognormvariate(mu, sigma)
 
 def compute_time_ms(module: str, node: Node, rng: random.Random, task_profile_name: str) -> float:
-    prof = TASK_PROFILES.get(task_profile_name, TASK_PROFILES["object-det"])
+    prof = profiles.TASK_PROFILES.get(task_profile_name, profiles.TASK_PROFILES["object-det"])
     is_prefix = module.startswith("resnet_")
     bucket = "prefix" if is_prefix else "suffix"
     base_mean = prof[node.kind][bucket]
@@ -42,7 +42,7 @@ def compute_time_ms(module: str, node: Node, rng: random.Random, task_profile_na
     return _sample_runtime_lognormal(base_mean, cv, rng)
 
 def module_output_mb(module: str) -> float:
-    return OUTPUT_SIZES_MB.get(module, 0.0)
+    return profiles.OUTPUT_SIZES_MB.get(module, 0.0)
 
 # ---------------------------
 # Helpers
@@ -226,7 +226,7 @@ def e2e_metrics_for_stitch(
     random_k: int = 2,
 ) -> Dict[str, float]:
 
-    spec     = CANDIDATE_STITCHES[stitch_id]
+    spec     = profiles.CANDIDATE_STITCHES[stitch_id]
     modules  = spec["modules"]
     acc_val  = float(spec["acc"])
 

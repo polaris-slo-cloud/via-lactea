@@ -42,7 +42,7 @@ import numpy as np
 from dataclasses import dataclass
 
 from . import config, placement
-from .profiles import CANDIDATE_STITCHES
+from . import profiles
 from .runtime import e2e_metrics_for_stitch, _nodes_for_module
 from .selection_algo import _pair_shortest_cached
 from .topology import Node, module_output_mb, Topology, _filtered_topology_view
@@ -458,7 +458,7 @@ def _dp_net_for_stitch(
     k_nodes: int,
     k_pairs: int,
 ) -> Tuple[Optional[Dict], int]:
-    spec = CANDIDATE_STITCHES.get(sid)
+    spec = profiles.CANDIDATE_STITCHES.get(sid)
     if spec is None:
         return None, 0
 
@@ -707,7 +707,7 @@ def eval_all_stitches_net_metrics(
             terminal_objective="latency",
         )
 
-    stitch_ids = cfg.stitch_ids if cfg.stitch_ids is not None else list(CANDIDATE_STITCHES.keys())
+    stitch_ids = cfg.stitch_ids if cfg.stitch_ids is not None else list(profiles.CANDIDATE_STITCHES.keys())
     if cfg.shuffle:
         tmp = list(stitch_ids)
         rng.shuffle(tmp)
@@ -717,7 +717,7 @@ def eval_all_stitches_net_metrics(
     for sid in stitch_ids:
         mets = eval_stitch_net_metrics(sid, placement, topo, rng, acc_min=acc_min, cfg=cfg)
         if mets is None:
-            mets = _reject_row(stitch_id=sid, acc=float(CANDIDATE_STITCHES.get(sid, {}).get("acc", float("nan"))))
+            mets = _reject_row(stitch_id=sid, acc=float(profiles.CANDIDATE_STITCHES.get(sid, {}).get("acc", float("nan"))))
         out.append(mets)
     return out
 
@@ -796,7 +796,13 @@ def choose_stitch_for_task(
     candidates: List[Tuple[Tuple[float, float, float], Dict]] = []
     ssp_calls_total = 0
 
-    for sid in sorted(CANDIDATE_STITCHES.keys()):
+    sid_ids = sorted(
+        profiles.CANDIDATE_STITCHES,
+        key=lambda sid: profiles.CANDIDATE_STITCHES[sid]["acc"],
+        reverse=True
+    )[:5]
+
+    for sid in sid_ids:
         dp, ssp_calls = _dp_net_for_stitch_adaptive(
             sid, placement, ftopo,
             stage_prune_ms=stage_prune_ms,
@@ -952,9 +958,9 @@ def _mirror_cached_fields(mets: Dict) -> Dict:
 
 def always_best_accuracy(placement: Dict[str, Node], topo: Topology, rng: random.Random, task_profile_name: str) -> Dict:
     t0 = time.perf_counter()
-    top_acc = max(spec["acc"] for spec in CANDIDATE_STITCHES.values())
+    top_acc = max(spec["acc"] for spec in profiles.CANDIDATE_STITCHES.values())
     best = None
-    candidate_stitches = list(CANDIDATE_STITCHES.items())
+    candidate_stitches = list(profiles.CANDIDATE_STITCHES.items())
     random.shuffle(candidate_stitches)
     for sid, spec in candidate_stitches:
         if spec["acc"] + 1e-9 < top_acc:
@@ -973,7 +979,11 @@ def always_best_accuracy(placement: Dict[str, Node], topo: Topology, rng: random
 def lowest_latency(placement: Dict[str, Node], topo: Topology, rng: random.Random, task_profile_name: str) -> Dict:
     t0 = time.perf_counter()
     best = None
-    for sid in CANDIDATE_STITCHES.keys():
+    candidates = sorted(
+        profiles.CANDIDATE_STITCHES.keys(),
+        key=lambda sid: profiles.CANDIDATE_STITCHES[sid]["acc"]
+    )[:5]
+    for sid in candidates:
         mets = e2e_metrics_for_stitch(sid, placement, topo, rng, task_profile_name, greedy_objective="latency")
         cand = {"stitch_id": sid, **mets}
         if (best is None) or (cand["latency_ms"] < best["latency_ms"]):
@@ -987,7 +997,7 @@ def lowest_latency(placement: Dict[str, Node], topo: Topology, rng: random.Rando
 
 def random_pick_stitch(placement: Dict[str, Node], topo: Topology, rng: random.Random, task_profile_name: str) -> Dict:
     t0 = time.perf_counter()
-    sid = rng.choice(list(CANDIDATE_STITCHES.keys()))
+    sid = rng.choice(list(profiles.CANDIDATE_STITCHES.keys()))
     mets = e2e_metrics_for_stitch(sid, placement, topo, rng, task_profile_name, greedy_objective="random2", random_k=2)
     out = {"stitch_id": sid, **mets}
     out = _mirror_cached_fields(out)
@@ -1004,7 +1014,7 @@ def round_robin_pick_stitch(
     offset: int = config.RR_START_OFFSET
 ) -> Dict:
     t0 = time.perf_counter()
-    rr_order = sorted(CANDIDATE_STITCHES.keys())
+    rr_order = sorted(profiles.CANDIDATE_STITCHES.keys())
     sid = rr_order[(index + offset) % len(rr_order)]
     mets = e2e_metrics_for_stitch(sid, placement, topo, rng, task_profile_name, greedy_objective="rr", rr_index=index, rr_offset=offset)
     out = {"stitch_id": sid, **mets}
@@ -1020,7 +1030,7 @@ def full_model_stitch(
     task_profile_name: str,
 ) -> Dict:
     t0 = time.perf_counter()
-    sid = min(CANDIDATE_STITCHES.keys())
+    sid = min(profiles.CANDIDATE_STITCHES.keys())
     mets = e2e_metrics_for_stitch(
         sid, placement, topo, rng, task_profile_name,
         greedy_objective="full-model"

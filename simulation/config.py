@@ -20,7 +20,7 @@ SLO_ACC_MIN = 89.0  # example minimum accuracy (%) required
 
 
 RUN_MODE = "workflow"   # options: "task", "workflow", "both"
-HARD_ACCURACY_CONSTRAINT = False
+HARD_ACCURACY_CONSTRAINT = True
 HARD_LATENCY_CONSTRAINT = False
 SOFT_W_LAT =0.5
 SOFT_W_ACC=0.5
