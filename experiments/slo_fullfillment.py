@@ -3,7 +3,7 @@
 import pandas as pd
 import numpy as np
 
-INPUT_FILE = "results/wildfire/sat250_edge85_cloud1_seed42/workflow_runs.csv"
+INPUT_FILE = "results/sat250_edge85_cloud1_seed42/workflow_runs.csv"
 OUTPUT_FILE = "overall_slo_fulfillment.csv"
 
 LATENCY_SLO_MS = 2000.0

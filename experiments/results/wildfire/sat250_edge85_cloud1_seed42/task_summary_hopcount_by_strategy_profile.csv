@@ -1,0 +1,4 @@
+profile,strategy,mean,median,p95,p99
+extract-frames,SLO-first,9.52,9.0,13.0,14.02000000000001
+object-det,SLO-first,9.65,10.0,13.049999999999997,14.02000000000001
+prepare-ds,SLO-first,9.28,9.0,13.0,17.02000000000001

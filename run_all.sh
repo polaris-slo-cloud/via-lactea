@@ -1,8 +1,9 @@
 #!/bin/bash
 
-DATASETS=("wildfire" "floodnet" "c10")
+DATASETS=("wildfire")
+#DATASETS=("wildfire" "floodnet" "c10")
 TOPO_SIZES=("250")
-#TOPO_SIZES=("250" "500" "1000" "2000" "3000" "6000")
+#TOPO_SIZES=("250" "500" "1000" "2000" "3000" "5000")
 
 LOG_FILE="run_all_$(date +%Y%m%d_%H%M%S).log"
 

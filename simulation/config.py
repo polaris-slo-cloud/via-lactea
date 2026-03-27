@@ -9,17 +9,17 @@ import os
 SEED               = 42
 
 # Simulation sizes
-NUM_RUNS_TASK      = 20
-NUM_RUNS_WORKFLOW  = 10
+NUM_RUNS_TASK      = 100
+NUM_RUNS_WORKFLOW  = 1
 WORKFLOW_STAGES    = 3
 
 # SLO knobs
-SLO_MS_TASK        = 70.0    # task-level SLO (also used for workflow 'task-SLO' checks)
-SLO_MS_STAGE       = 1000.0    # per-stage SLO used by SLO-first in workflows
+SLO_MS_TASK        = 1000.0    # task-level SLO (also used for workflow 'task-SLO' checks)
+SLO_MS_STAGE       = 6000.0    # per-stage SLO used by SLO-first in workflows
 SLO_ACC_MIN = 89.0  # example minimum accuracy (%) required
 
 
-RUN_MODE = "workflow"   # options: "task", "workflow", "both"
+RUN_MODE = "task"   # options: "task", "workflow", "both"
 HARD_ACCURACY_CONSTRAINT = True
 HARD_LATENCY_CONSTRAINT = False
 SOFT_W_LAT =0.5
@@ -57,7 +57,7 @@ CACHE_DEBUG = True
 #   "SLO-first"                       -> run only SLO-first
 #   "SLO-first,Round-Robin"           -> comma/pipe separated names
 #   ["SLO-first", "Round-Robin"]      -> list is also fine
-ENABLED_BASELINES = "all"
+ENABLED_BASELINES = "SLO-first"
 
 
 # Runtime variability (coeff. of variation)

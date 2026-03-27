@@ -800,7 +800,7 @@ def choose_stitch_for_task(
         profiles.CANDIDATE_STITCHES,
         key=lambda sid: profiles.CANDIDATE_STITCHES[sid]["acc"],
         reverse=True
-    )[:5]
+    )[:3]
 
     for sid in sid_ids:
         dp, ssp_calls = _dp_net_for_stitch_adaptive(
@@ -982,7 +982,7 @@ def lowest_latency(placement: Dict[str, Node], topo: Topology, rng: random.Rando
     candidates = sorted(
         profiles.CANDIDATE_STITCHES.keys(),
         key=lambda sid: profiles.CANDIDATE_STITCHES[sid]["acc"]
-    )[:5]
+    )[:3]
     for sid in candidates:
         mets = e2e_metrics_for_stitch(sid, placement, topo, rng, task_profile_name, greedy_objective="latency")
         cand = {"stitch_id": sid, **mets}

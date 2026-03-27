@@ -5,123 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c74a1278-8ecf-44a7-801f-a5b316fe06c9" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/experiments/boxplot_latency.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/experiments/slo_fullfillment.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/experiments/cdf.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/experiments/slo_latency.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/ray/app.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/ray/launch.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat1000_edge85_cloud1_seed42/workflow_accuracy_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat1000_edge85_cloud1_seed42/workflow_combined_slo_violation_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat1000_edge85_cloud1_seed42/workflow_runs.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat1000_edge85_cloud1_seed42/workflow_runs_stitches.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat1000_edge85_cloud1_seed42/workflow_summary_ALL_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat1000_edge85_cloud1_seed42/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat1000_edge85_cloud1_seed42/workflow_summary_latency_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat1000_edge85_cloud1_seed42/workflow_summary_link_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat1000_edge85_cloud1_seed42/workflow_summary_link_cached_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat1000_edge85_cloud1_seed42/workflow_summary_payload_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat1000_edge85_cloud1_seed42/workflow_summary_payload_cached_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat1000_edge85_cloud1_seed42/workflow_summary_selector_time_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat1000_edge85_cloud1_seed42/workflow_summary_ssp_calls_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat2000_edge85_cloud1_seed42/workflow_accuracy_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat2000_edge85_cloud1_seed42/workflow_combined_slo_violation_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat2000_edge85_cloud1_seed42/workflow_runs.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat2000_edge85_cloud1_seed42/workflow_runs_stitches.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat2000_edge85_cloud1_seed42/workflow_summary_ALL_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat2000_edge85_cloud1_seed42/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat2000_edge85_cloud1_seed42/workflow_summary_latency_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat2000_edge85_cloud1_seed42/workflow_summary_link_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat2000_edge85_cloud1_seed42/workflow_summary_link_cached_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat2000_edge85_cloud1_seed42/workflow_summary_payload_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat2000_edge85_cloud1_seed42/workflow_summary_payload_cached_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat2000_edge85_cloud1_seed42/workflow_summary_selector_time_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat2000_edge85_cloud1_seed42/workflow_summary_ssp_calls_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_accuracy_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_accuracy_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_combined_slo_violation_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_combined_slo_violation_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_runs.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_runs.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_runs_stitches.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_runs_stitches.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_summary_ALL_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_summary_ALL_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_summary_hopcount_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_summary_latency_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_summary_latency_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_summary_link_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_summary_link_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_summary_link_cached_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_summary_link_cached_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_summary_payload_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_summary_payload_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_summary_payload_cached_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_summary_payload_cached_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_summary_selector_time_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_summary_selector_time_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_summary_ssp_calls_by_strategy.csv" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/results/c10/sat250_edge85_cloud1_seed42/workflow_summary_ssp_calls_by_strategy.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3000_edge85_cloud1_seed42/workflow_accuracy_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3000_edge85_cloud1_seed42/workflow_combined_slo_violation_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3000_edge85_cloud1_seed42/workflow_runs.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3000_edge85_cloud1_seed42/workflow_runs_stitches.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3000_edge85_cloud1_seed42/workflow_summary_ALL_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3000_edge85_cloud1_seed42/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3000_edge85_cloud1_seed42/workflow_summary_latency_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3000_edge85_cloud1_seed42/workflow_summary_link_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3000_edge85_cloud1_seed42/workflow_summary_link_cached_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3000_edge85_cloud1_seed42/workflow_summary_payload_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3000_edge85_cloud1_seed42/workflow_summary_payload_cached_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3000_edge85_cloud1_seed42/workflow_summary_selector_time_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3000_edge85_cloud1_seed42/workflow_summary_ssp_calls_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3023_edge85_cloud1_seed42/workflow_accuracy_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3023_edge85_cloud1_seed42/workflow_combined_slo_violation_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3023_edge85_cloud1_seed42/workflow_runs.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3023_edge85_cloud1_seed42/workflow_runs_stitches.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3023_edge85_cloud1_seed42/workflow_summary_ALL_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3023_edge85_cloud1_seed42/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3023_edge85_cloud1_seed42/workflow_summary_latency_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3023_edge85_cloud1_seed42/workflow_summary_link_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3023_edge85_cloud1_seed42/workflow_summary_link_cached_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3023_edge85_cloud1_seed42/workflow_summary_payload_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3023_edge85_cloud1_seed42/workflow_summary_payload_cached_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3023_edge85_cloud1_seed42/workflow_summary_selector_time_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat3023_edge85_cloud1_seed42/workflow_summary_ssp_calls_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat4800_edge85_cloud1_seed42/workflow_accuracy_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat4800_edge85_cloud1_seed42/workflow_combined_slo_violation_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat4800_edge85_cloud1_seed42/workflow_runs.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat4800_edge85_cloud1_seed42/workflow_runs_stitches.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat4800_edge85_cloud1_seed42/workflow_summary_ALL_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat4800_edge85_cloud1_seed42/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat4800_edge85_cloud1_seed42/workflow_summary_latency_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat4800_edge85_cloud1_seed42/workflow_summary_link_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat4800_edge85_cloud1_seed42/workflow_summary_link_cached_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat4800_edge85_cloud1_seed42/workflow_summary_payload_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat4800_edge85_cloud1_seed42/workflow_summary_payload_cached_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat4800_edge85_cloud1_seed42/workflow_summary_selector_time_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat4800_edge85_cloud1_seed42/workflow_summary_ssp_calls_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat500_edge85_cloud1_seed42/workflow_accuracy_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat500_edge85_cloud1_seed42/workflow_combined_slo_violation_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat500_edge85_cloud1_seed42/workflow_runs.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat500_edge85_cloud1_seed42/workflow_runs_stitches.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat500_edge85_cloud1_seed42/workflow_summary_ALL_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat500_edge85_cloud1_seed42/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat500_edge85_cloud1_seed42/workflow_summary_latency_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat500_edge85_cloud1_seed42/workflow_summary_link_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat500_edge85_cloud1_seed42/workflow_summary_link_cached_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat500_edge85_cloud1_seed42/workflow_summary_payload_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat500_edge85_cloud1_seed42/workflow_summary_payload_cached_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat500_edge85_cloud1_seed42/workflow_summary_selector_time_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat500_edge85_cloud1_seed42/workflow_summary_ssp_calls_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat6469_edge85_cloud1_seed42/workflow_accuracy_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat6469_edge85_cloud1_seed42/workflow_combined_slo_violation_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat6469_edge85_cloud1_seed42/workflow_runs.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat6469_edge85_cloud1_seed42/workflow_runs_stitches.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat6469_edge85_cloud1_seed42/workflow_summary_ALL_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat6469_edge85_cloud1_seed42/workflow_summary_hopcount_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat6469_edge85_cloud1_seed42/workflow_summary_latency_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat6469_edge85_cloud1_seed42/workflow_summary_link_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat6469_edge85_cloud1_seed42/workflow_summary_link_cached_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat6469_edge85_cloud1_seed42/workflow_summary_payload_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat6469_edge85_cloud1_seed42/workflow_summary_payload_cached_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat6469_edge85_cloud1_seed42/workflow_summary_selector_time_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/experiments/results/c10/sat6469_edge85_cloud1_seed42/workflow_summary_ssp_calls_by_strategy.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/experiments/slo_fullfillment.py" beforeDir="false" afterPath="$PROJECT_DIR$/experiments/slo_fullfillment.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/run_all.sh" beforeDir="false" afterPath="$PROJECT_DIR$/run_all.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/simulation/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/simulation/profiles.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation/profiles.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/simulation/runtime.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation/runtime.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/simulation/selection.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation/selection.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/simulation/simulator.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation/simulator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/simulation/topology.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation/topology.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/simulation/stats_io.py" beforeDir="false" afterPath="$PROJECT_DIR$/simulation/stats_io.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -148,6 +39,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "Python.cdf.executor": "Run",
     "Python.main.executor": "Run",
     "Python.topology.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
@@ -163,7 +55,35 @@
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
-  <component name="RunManager">
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/experiments/results" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Python.cdf">
+    <configuration name="cdf" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="via-lactea" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/experiments" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/experiments/cdf.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="via-lactea" />
       <option name="ENV_FILES" value="" />
@@ -189,6 +109,7 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.cdf" />
         <item itemvalue="Python.main" />
       </list>
     </recent_temporary>
@@ -214,7 +135,7 @@
       <workItem from="1772263324934" duration="2545000" />
       <workItem from="1772524728590" duration="16688000" />
       <workItem from="1772548743074" duration="1254000" />
-      <workItem from="1773239360067" duration="31577000" />
+      <workItem from="1773239360067" duration="52513000" />
     </task>
     <servers />
   </component>
@@ -230,15 +151,16 @@
           <option name="timeStamp" value="2" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/simulation/config.py</url>
-          <line>74</line>
-          <option name="timeStamp" value="3" />
+          <url>file://$PROJECT_DIR$/simulation/selection_algo.py</url>
+          <line>361</line>
+          <option name="timeStamp" value="6" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/via_lactea$main.coverage" NAME="main Coverage Results" MODIFIED="1773384681788" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/via_lactea$main.coverage" NAME="main Coverage Results" MODIFIED="1773513169339" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/via_lactea$cdf.coverage" NAME="cdf Coverage Results" MODIFIED="1773514132029" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/experiments" />
     <SUITE FILE_PATH="coverage/via_lactea$topology.coverage" NAME="topology Coverage Results" MODIFIED="1772261151347" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/simulation" />
   </component>
 </project>
